@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<data xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/datamode_file.xsd">
+  <interval id="DEFAULT_VEHICLE" begin="0" end="8400">
+    <!-- <tazRelation from="taz_4" to="taz_reduced_end" count="2004" /> -->
+    <tazRelation from="taz_4" to="taz_reduced_end" count="3471" />
+    <!-- <tazRelation from="taz_4" to="taz_3d" count="3339" /> -->
+    <!-- <tazRelation from="taz_6" to="taz_reduced_end" count="2904" /> -->
+    <!-- <tazRelation from="taz_3" to="taz_4d" count="2628" /> -->
+    <!-- <tazRelation from="taz_3" to="taz_reduced_end" count="1467" /> -->
+    <tazRelation from="taz_reduced_start" to="taz_reduced_end" count="20181" />
+    <!-- <tazRelation from="taz_reduced_start" to="taz_6d" count="1060" /> -->
+    <!-- <tazRelation from="taz_reduced_start" to="taz_3d" count="1272" />
+    <tazRelation from="taz_reduced_start" to="taz_5d" count="4" /> -->
+    <tazRelation from="taz_reduced_start" to="taz_4d" count="1272" />
+    <!-- <tazRelation from="taz_reduced_start" to="taz_6d" count="4" /> -->
+  </interval>
+</data>

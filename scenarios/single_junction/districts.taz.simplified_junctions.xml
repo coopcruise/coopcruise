@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- generated on 2022-05-03 12:25:59.069918 by edgesInDistricts.py v1_12_0+1654-dd39cba5a18
+  options: -n /Users/jondavis/Desktop/UCBI24Project/I24 Network/Jon's second edited version (from mostafa's network)/I24_V3_with traffic signal_Jon_and_Mostafa.net.xml -t /Users/jondavis/Desktop/UCBI24Project/I24 Network/Jon's second edited version (from mostafa's network)/additionals.xml
+-->
+<tazs xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/taz_file.xsd">
+    <!-- Cut from reduced simulation:-->
+    <!-- i24 highway start southeast-bound -->
+    <!-- <taz id="taz_0" color="blue" edges="975552234"/> -->
+    <!-- i24 highway end northwest-bound -->
+    <!-- <taz id="taz_0d" color="blue" edges="635078551"/> -->
+    <!-- 6th junction (exit 60) Haywood Ln start eastbound -->
+    <!-- <taz id="taz_1" color="blue" edges="27925532#0"/> -->
+    <!-- 6th junction (exit 60) Haywood Ln end westbound -->
+    <!-- <taz id="taz_1d" color="blue" edges="19477386#3"/> -->
+    <!-- 6th junction (exit 60) Haywood Ln start westbound -->
+    <!-- <taz id="taz_2" color="blue" edges="635078556"/> -->
+    <!-- 6th junction (exit 60) Haywood Ln end eastbound -->
+    <!-- <taz id="taz_2d" color="blue" edges="635078749#2"/> -->
+
+
+    <taz id="taz_2" color="blue" edges="19447013"/>
+    <taz id="taz_2d" color="blue" edges="19446657"/>
+
+    <!-- Last highway edge for reduced simulation -->
+    <taz id="taz_reduced_end" color="blue" edges="634155175.210"/>
+
+     <!--
+    Include all westbound routes that start in these jucntions
+    + routes that stay in these jucntions
+    -->
+
+    <!-- 5th junction (exit 59) Bell Rd start eastbound -->
+    <!-- <taz id="taz_3" color="blue" edges="373354004#0"/> -->
+    <!-- 5th junction (exit 59) Bell Rd end westbound -->
+    <!-- <taz id="taz_3d" color="blue" edges="-373354004#0"/> -->
+    <!-- 5th junction (exit 59) Bell Rd start westbound -->
+    <!-- <taz id="taz_4" color="blue" edges="-634155178#0"/> -->
+    <!-- 5th junction (exit 59) Bell Rd end eastbound -->
+    <!-- <taz id="taz_4d" color="blue" edges="634155178#0"/> -->
+    <!-- 4th junction (exit 58) start northbound -->
+    <!-- <taz id="taz_5" color="blue" edges="1016548836#0"/> -->
+    <!-- 4th junction (exit 58) end southbound -->
+    <!-- <taz id="taz_5d" color="blue" edges="1016548837#1"/> -->
+    <!-- 4th junction (exit 58) start southbound -->
+    <!-- <taz id="taz_6" color="blue" edges="108162153"/> -->
+    <!-- 4th junction (exit 58) end northbound -->
+    <!-- <taz id="taz_6d" color="blue" edges="108162196#3"/> -->
+
+    <taz id="taz_4" color="blue" edges="277208926"/>
+    <taz id="taz_4d" color="blue" edges="19442635"/>
+
+
+    <!-- First highway edge for reduced simulation -->
+    <taz id="taz_reduced_start" color="blue" edges="992666043"/>
+
+    <!-- Cut from reduced simulation:-->
+    <taz id="taz_6" color="blue" edges="19441652#1"/>
+    <taz id="taz_6d" color="blue" edges="19440902"/>
+    <taz id="taz_8" color="blue" edges="180933346#2"/>
+    <taz id="taz_8d" color="blue" edges="180933397#0"/>
+    <taz id="taz_10" color="blue" edges="173720379"/>
+    <taz id="taz_10d" color="blue" edges="19591150"/>
+    <taz id="taz_12" color="blue" edges="19593892"/>
+    <taz id="taz_12d" color="blue" edges="19592287#0"/>
+
+    <!-- 3rd junction (exit 57) start northbound -->
+    <!-- <taz id="taz_7" color="blue" edges="19472519"/> -->
+    <!-- 3rd junction (exit 57) end southbound -->
+    <!-- <taz id="taz_7d" color="blue" edges="-19472519"/> -->
+    <!-- 3rd junction (exit 57) start soutbound -->
+    <!-- <taz id="taz_8" color="blue" edges="437517618#0"/> -->
+    <!-- 3rd junction (exit 57) end northbound -->
+    <!-- <taz id="taz_8d" color="blue" edges="-437517618#0"/> -->
+    <!-- 2nd junction (exit 56) start northbound -->
+    <!-- <taz id="taz_9" color="blue" edges="-E0"/> -->
+    <!-- 2nd junction (exit 56) end southbound -->
+    <!-- <taz id="taz_9d" color="blue" edges="E0"/> -->
+    <!-- 2nd junction (exit 56) start southbound -->
+    <!-- <taz id="taz_10" color="blue" edges="-159936720"/> -->
+    <!-- 2nd junction (exit 56) end northbound -->
+    <!-- <taz id="taz_10d" color="blue" edges="1599367200"/> -->
+    <!-- 1st junction (exit 55) start northeast bound -->
+    <!-- <taz id="taz_11" color="blue" edges="108162277"/> -->
+    <!-- 1st junction (exit 55) end southwest bound -->
+    <!-- <taz id="taz_11d" color="blue" edges="960903519"/> -->
+    <!-- 1st junction (exit 55) start southwest bound -->
+    <!-- <taz id="taz_12" color="blue" edges="108269525"/> -->
+    <!-- 1st junction (exit 55) end northeast bound -->
+    <!-- <taz id="taz_12d" color="blue" edges="19596001"/> -->
+    <!-- i24 highway start northwest-bound -->
+    <!-- <taz id="taz_13" color="blue" edges="19603466"/> -->
+    <!-- i24 highway end southeast-bound -->
+    <!-- <taz id="taz_13d" color="blue" edges="989310403#1"/> -->
+    <!-- 4th junction (exit 58) start eastbound (relevant for i24 southeast-bound only) -->
+    <!-- <taz id="taz_cf" color="blue" edges="1016548853"/> -->
+    <!-- 4th junction (exit 58) end westbound (relevant for i24 southeast-bound only) -->
+    <!-- <taz id="taz_cfd" edges="1016548856"/> -->
+</tazs>

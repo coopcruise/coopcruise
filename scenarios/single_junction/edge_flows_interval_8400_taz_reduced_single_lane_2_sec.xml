@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<data xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/datamode_file.xsd">
+  <interval id="DEFAULT_VEHICLE" begin="0" end="8400">
+    <tazRelation from="taz_4" to="taz_reduced_end" count="4200" />
+    <!-- taz_reduced_start in this scenario has 5 lanes, and therefore we divided the flow originating there by 5 -->
+    <!-- <tazRelation from="taz_reduced_start" to="taz_reduced_end" count="4036" /> -->
+  <tazRelation from="taz_reduced_start" to="taz_reduced_end" count="4200" />
+  <!-- <tazRelation from="taz_reduced_start" to="taz_4d" count="254" /> -->
+  </interval>
+</data>
