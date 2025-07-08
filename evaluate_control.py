@@ -11,6 +11,7 @@ from multiprocessing import Process, Queue
 import queue  # imported for using queue.Empty exception
 from ray.rllib.policy.policy import Policy
 from ray.rllib.utils.spaces.space_utils import unsquash_action
+from ray.rllib.env.env_context import EnvContext
 import traci.constants as tc
 
 from sumo_centralized_env_tau import SumoEnvCentralizedTau
@@ -236,7 +237,11 @@ def is_valid_params(params: dict):
     return True
 
 
-def simulate(sumo_config_params_update: dict, sim_config_params: dict):
+def simulate(
+    sumo_config_params_update: dict,
+    sim_config_params: dict,
+    worker_index: int | None = None,
+):
     sumo_config_params = DEF_SUMO_CONFIG | sumo_config_params_update
 
     merge_flow_duration = (
@@ -303,6 +308,9 @@ def simulate(sumo_config_params_update: dict, sim_config_params: dict):
     sim_config_params.update(custom_name_postfix=custom_name_postfix)
 
     env_config = get_tau_env_config(sumo_config_params_update, sim_config_params)
+    if worker_index is not None:
+        env_config = EnvContext(env_config, worker_index=worker_index)
+
     env = SumoEnvCentralizedTau(env_config)
 
     if (
@@ -471,7 +479,7 @@ def simulate(sumo_config_params_update: dict, sim_config_params: dict):
     env.close()
 
 
-def do_job(tasks_to_accomplish: Queue):
+def do_job(tasks_to_accomplish: Queue, worker_index: int | None = None):
     while True:
         try:
             """
@@ -480,9 +488,10 @@ def do_job(tasks_to_accomplish: Queue):
                 queue(False) function would do the same task also.
             """
             task = tasks_to_accomplish.get_nowait()
-            simulate(**task)
         except queue.Empty:
             break
+
+        simulate(**task, worker_index=worker_index)
     return True
 
 
@@ -627,7 +636,7 @@ if __name__ == "__main__":
     if num_processes > 0:
         processes: list[Process] = []
         for w in range(num_processes):
-            p = Process(target=do_job, args=[sim_queue])
+            p = Process(target=do_job, args=[sim_queue, w])
             processes.append(p)
             p.start()
 
