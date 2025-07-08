@@ -164,7 +164,7 @@ class SumoEnv(MultiAgentEnv):
         self.control_edges: dict = config.get("control_edges")
         self.eval_config: EvaluationConfig = config.get("eval_config")
         self.name_postfix: str = config.get("name_postfix")
-        self.completed_reward: str = (
+        self.completed_reward: float = (
             self.DEF_COMPLETED_REWARD
             if config.get("completed_reward") is None
             else config.get("completed_reward")
