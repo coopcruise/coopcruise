@@ -504,7 +504,9 @@ if __name__ == "__main__":
     )
 
     alg_checkpoint_path = args.path
-    use_learned_control = alg_checkpoint_path is not None
+    use_learned_control = [False]
+    if alg_checkpoint_path is not None:
+        use_learned_control.append(True)
     use_tau_control = False  # [False, True]
     tau_control_only_rightmost_lane = False
     rl_per_lane_control = PER_LANE_CONTROL
