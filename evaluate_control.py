@@ -635,5 +635,6 @@ if __name__ == "__main__":
 
     else:
         print(f"{len(sim_queue._buffer) = }")
-        task = sim_queue.get()
-        simulate(**task)
+        do_job(sim_queue)
+        # task = sim_queue.get()
+        # simulate(**task)
