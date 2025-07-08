@@ -279,6 +279,13 @@ def get_av_data(
     }
 
 
+def is_veh_of_type(veh_params, veh_type: str = None):
+    return (
+        veh_type is None
+        or str(veh_params[tc.VAR_TYPE]).lower().split("@")[0] == str(veh_type).lower()
+    )
+
+
 def get_vehicle_data(
     context_subscription_junction_id: str, veh_type: str = None, traci_conn=None
 ):
@@ -298,12 +305,11 @@ def get_vehicle_data(
     """
     traci_conn = traci if traci_conn is None else traci_conn
     return {
-        veh_id: params
-        for veh_id, params in traci_conn.junction.getContextSubscriptionResults(
+        veh_id: veh_params
+        for veh_id, veh_params in traci_conn.junction.getContextSubscriptionResults(
             context_subscription_junction_id
         ).items()
-        if veh_type is None
-        or str(params[tc.VAR_TYPE]).lower().split("@")[0] == str(veh_type).lower()
+        if is_veh_of_type(veh_params, veh_type)
     }
 
 
@@ -498,15 +504,11 @@ def get_segment_num_vehicles(
     segment_ids = list(segment_data.keys())
 
     segment_num_vehicles = {segment_id: 0 for segment_id in segment_ids}
-    for vehicle_params in veh_data.values():
-        if (
-            veh_type is not None
-            and not str(vehicle_params[tc.VAR_TYPE]).lower().split("@")[0]
-            == str(veh_type).lower()
-        ):
+    for veh_params in veh_data.values():
+        if not is_veh_of_type(veh_params, veh_type):
             continue
 
-        edge = vehicle_params[tc.VAR_ROAD_ID]
+        edge = veh_params[tc.VAR_ROAD_ID]
         if edge in edge_segment_map.keys():
             segment_idx = edge_segment_map[edge]["idx"][
                 bisect(
@@ -515,7 +517,7 @@ def get_segment_num_vehicles(
                     # vehicle is between the last segment end and the end of the
                     # edge we will get an out of bounds error.
                     edge_segment_map[edge]["positions"][:-1],
-                    vehicle_params[tc.VAR_LANEPOSITION],
+                    veh_params[tc.VAR_LANEPOSITION],
                 )
             ]
             segment_num_vehicles[segment_ids[segment_idx]] += 1
@@ -562,19 +564,16 @@ def get_segment_veh_ids(
     segment_ids = list(segment_data.keys())
 
     segment_veh_ids = {segment_id: [] for segment_id in segment_ids}
-    for veh_id, vehicle_params in veh_data.items():
-        if (
-            veh_type is not None
-            and not str(vehicle_params[tc.VAR_TYPE]).lower() == str(veh_type).lower()
-        ):
+    for veh_id, veh_params in veh_data.items():
+        if not is_veh_of_type(veh_params, veh_type):
             continue
 
-        edge = vehicle_params[tc.VAR_ROAD_ID]
+        edge = veh_params[tc.VAR_ROAD_ID]
         if edge in edge_segment_map.keys():
             segment_idx = edge_segment_map[edge]["idx"][
                 bisect(
                     edge_segment_map[edge]["positions"][:-1],
-                    vehicle_params[tc.VAR_LANEPOSITION],
+                    veh_params[tc.VAR_LANEPOSITION],
                 )
             ]
             segment_veh_ids[segment_ids[segment_idx]].append(veh_id)
