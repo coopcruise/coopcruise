@@ -998,7 +998,7 @@ class SumoEnv(MultiAgentEnv):
             dir_name += f"_{name_postfix}"
 
         episode_results_dir = (
-            Path(self.results_dir) / Path(self.sumo_config.scenario_dir).stem / dir_name
+            Path(self.results_dir) / Path(self.sumo_config.scenario_dir).name / dir_name
         )
         return episode_results_dir
 
@@ -1013,7 +1013,7 @@ class SumoEnv(MultiAgentEnv):
 
         self.episode_state_dir = (
             Path(self.sumo_config.state_dir)
-            / Path(self.sumo_config.scenario_dir).stem
+            / Path(self.sumo_config.scenario_dir).name
             / dir_name
         )
         self.episode_state_dir.mkdir(exist_ok=True, parents=True)
