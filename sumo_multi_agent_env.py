@@ -209,6 +209,11 @@ class SumoEnv(MultiAgentEnv):
                     " if random_av_switching is True."
                 )
 
+        # Setup seeding
+        self.worker_index = (
+            config.worker_index if hasattr(config, "worker_index") else 0
+        )
+        self.episode_count = 0
         self.random_av_switching_seed = (
             config.get("random_av_switching_seed")
             if config.get("random_av_switching_seed") is not None
@@ -455,10 +460,17 @@ class SumoEnv(MultiAgentEnv):
         if self.sumo_config.no_warnings is True:
             self.sumo_start_cmd.append("--no-warnings")
 
-        sumo_random_seed = self.sumo_config.seed
-        if sumo_random_seed is None:
-            print("Sampling random seed")
+        # Create unique random seed for each worker and episode
+        # make it different for each rollout worker during training. See:
+        # https://discuss.ray.io/t/reproducible-training-setting-seeds-for-all-workers-environments/1051/9
+        worker_episode_seed = self.worker_index * 100_000 + self.episode_count
+        self.episode_count += 1
+
+        if self.sumo_config.seed is None:
+            print("Sampling random seed (SUMO sim)")
             sumo_random_seed = np.random.randint(0, 1e6)
+        else:
+            sumo_random_seed = (self.sumo_config.seed + worker_episode_seed) % (2**32)
 
         self.sumo_start_cmd += ["--seed", str(sumo_random_seed)]
         # self.sumo_start_cmd += ["--log", str("log.txt")]
@@ -467,9 +479,13 @@ class SumoEnv(MultiAgentEnv):
         if self.random_av_switching and self.av_percent > 0:
             veh_ids = extract_vehicle_ids_from_routes(self.route_path)
             num_veh_to_switch = int(len(veh_ids) * self.av_percent / 100.0)
-            # TODO: make it different for each rollout worker during training. See:
-            # https://discuss.ray.io/t/reproducible-training-setting-seeds-for-all-workers-environments/1051/9
-            default_rng = np.random.default_rng(seed=self.random_av_switching_seed)
+            random_av_switching_seed = self.random_av_switching_seed
+            if random_av_switching_seed is not None:
+                random_av_switching_seed = (
+                    random_av_switching_seed + worker_episode_seed
+                ) % (2**32)
+
+            default_rng = np.random.default_rng(seed=random_av_switching_seed)
             self.vehicles_to_switch = set(
                 default_rng.choice(veh_ids, num_veh_to_switch, replace=False)
             )
