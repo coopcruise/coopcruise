@@ -289,6 +289,7 @@ class SumoEnvCentralizedTau(SumoEnv):
     def reset(self, *args, seed=None, options=None):
         super().reset(*args, seed=seed, options=options)
         self._update_required_speed_profile()
+        self._update_required_tau_profile()
         self.num_waiting_veh = 0
         self._agent_ids = set([self.CENTRALIZED_AGENT_NAME])
         veh_data = self._get_veh_data()
