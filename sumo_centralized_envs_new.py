@@ -690,9 +690,6 @@ class SumoEnvCentralizedTau(SumoEnvCentralizedBase):
 
     def __init__(self, config: dict):
         super().__init__(config)
-        self.default_tau = get_veh_type_param(
-            self.route_path, self.control_veh_type, "tau"
-        )
         self.min_tau = (
             config.get("min_tau")
             if config.get("min_tau") is not None
@@ -707,6 +704,9 @@ class SumoEnvCentralizedTau(SumoEnvCentralizedBase):
     # @override  # Only from python 3.12
     def _init_actions(self):
         super()._init_actions()
+        self.default_tau = get_veh_type_param(
+            self.route_path, self.control_veh_type, "tau"
+        )
         self._update_required_tau_profile()
 
     def _set_action(self, action):
