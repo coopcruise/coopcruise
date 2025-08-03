@@ -457,8 +457,14 @@ def simulate(
         at_least_one_waiting=at_least_one_waiting,
         avg_time_delay=avg_time_delay,
         avg_acc_time_delay_per_sec=avg_acc_time_delay_per_sec,
-        tau=(tau_val if use_tau_control else env.default_tau),
     )
+
+    if sim_config_params["env_class"] == "SumoEnvCentralizedTau":
+        sim_tau = tau_val if use_tau_control else env.default_tau
+    else:
+        sim_tau = None
+
+    episode_results.update(tau=sim_tau)
 
     if num_merge_timesteps > 0:
         merge_time = num_merge_timesteps * seconds_per_step
