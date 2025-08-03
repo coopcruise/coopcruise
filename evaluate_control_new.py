@@ -462,7 +462,7 @@ def simulate(
     if sim_config_params["env_class"] == "SumoEnvCentralizedTau":
         sim_tau = tau_val if use_tau_control else env.default_tau
     else:
-        sim_tau = None
+        sim_tau = SumoEnvCentralizedTau.DEF_MIN_TAU
 
     episode_results.update(tau=sim_tau)
 
