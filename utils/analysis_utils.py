@@ -302,9 +302,13 @@ def extract_sim_logs(
                 results_dir, detector_counts_file, steps_per_second
             )
 
-            computation_time[sim_name] = read_sim_data_file(
+            computation_time_data = read_sim_data_file(
                 results_dir, computation_time_file, steps_per_second
-            ).iloc[:, 0]
+            )
+            if computation_time_data is None:
+                raise ValueError(f"No data for {results_dir}")
+
+            computation_time[sim_name] = computation_time_data.iloc[:, 0]
 
             profile_veh_counts[sim_name] = read_sim_data_file(
                 results_dir, speed_profile_veh_count_file, steps_per_second
