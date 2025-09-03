@@ -117,6 +117,20 @@ class SumoEnvCentralizedBase(SumoEnv):
         self.control_segment_lanes = self.num_segment_lanes[self.control_segment_idx]
         self.num_control_segment_lanes = sum(self.control_segment_lanes)
         self.cumsum_control_segment_lanes = np.cumsum(self.control_segment_lanes)
+
+        self.segment_max_speed = np.array(
+            [
+                self.edge_max_speed[segment["end"]["edge"]]
+                for segment in self.segment_data.values()
+            ]
+        )
+
+        self.segment_max_speed_norm = (
+            self.segment_max_speed / self.normalization_max_speed
+        )
+
+        self.required_speed_profile = self._get_control_profile_max_speed()
+
         if self.per_lane_control:
             self.action_space_len = self.num_control_segment_lanes
 
@@ -125,16 +139,6 @@ class SumoEnvCentralizedBase(SumoEnv):
         )
 
         self.route_path = get_route_file_path(self.sumo_config_path)
-
-        self.segment_max_speed = np.array(
-            [
-                self.edge_max_speed[segment["end"]["edge"]]
-                for segment in self.segment_data.values()
-            ]
-        )
-        self.segment_max_speed_norm = (
-            self.segment_max_speed / self.normalization_max_speed
-        )
 
         # self.prev_step_veh_ids = set()
         self.use_outflow_reward = (
@@ -225,11 +229,16 @@ class SumoEnvCentralizedBase(SumoEnv):
 
         # for tracking lane changes
         self.av2lane = {}
-        self.required_speed_profile = self.segment_max_speed[self.control_segment_idx]
         self._init_actions()
 
     def _init_actions(self):
         pass
+
+    def _get_control_profile_max_speed(self):
+        profile_max_speed = self.segment_max_speed[self.control_segment_idx]
+        if self.per_lane_control:
+            profile_max_speed = np.repeat(profile_max_speed, self.control_segment_lanes)
+        return profile_max_speed
 
     @staticmethod
     def get_centralized_obs_space(
@@ -301,6 +310,7 @@ class SumoEnvCentralizedBase(SumoEnv):
         self._init_actions()
         self.num_waiting_veh = 0
         self._agent_ids = set([self.CENTRALIZED_AGENT_NAME])
+        self.av2lane = {}
         veh_data = self._get_veh_data()
         centralized_obs = self._get_centralized_obs(veh_data)
         centralized_info = {}
@@ -449,6 +459,31 @@ class SumoEnvCentralizedBase(SumoEnv):
         # Recursively progress the simulation until the profile should be updated
         return self.step({})
 
+    def _get_lane_average_per_lane_profile(self, per_lane_profile):
+        per_lane_profile = np.asarray(per_lane_profile)
+        return np.array(
+            [
+                per_lane_profile[
+                    0
+                    if control_segment_idx == 0
+                    else self.cumsum_control_segment_lanes[
+                        control_segment_idx - 1
+                    ] : cumsum_segment_lanes
+                ].mean()
+                for control_segment_idx, cumsum_segment_lanes in enumerate(
+                    self.cumsum_control_segment_lanes
+                )
+            ]
+        )
+
+    def _get_average_control_segment_speed_action(self):
+        avg_segment_control_segment_speed = self.required_speed_profile.copy()
+        if self.per_lane_control:
+            avg_segment_control_segment_speed = self._get_lane_average_per_lane_profile(
+                avg_segment_control_segment_speed
+            )
+        return avg_segment_control_segment_speed
+
     def _get_centralized_obs(self, veh_data: dict):
         num_highway_state_segment_veh = np.array(
             list(
@@ -468,12 +503,17 @@ class SumoEnvCentralizedBase(SumoEnv):
             )
         )
 
-        # For segments with 0 vehicles, use the required speed profile (from the
+        # For controlled segments with 0 vehicles, use the required speed profile (from the
         # latest actions). segment_speed is not normalized.
+        # Use average of action for per-lane control
+        # Why should we do this? Isn't this correct only for 100% AV?
         segment_speed = np.array(self.speed_measurements)
+        average_control_segment_speed_action = (
+            self._get_average_control_segment_speed_action()
+        )
         segment_speed[self.control_segment_idx] = np.where(
             num_highway_state_segment_avs[self.control_segment_idx] == 0,
-            self.required_speed_profile,
+            average_control_segment_speed_action,
             segment_speed[self.control_segment_idx],
         )
         highway_state_segment_speed = segment_speed[self.highway_state_segment_idx]
@@ -631,17 +671,12 @@ class SumoEnvCentralizedVel(SumoEnvCentralizedBase):
 
     def _update_required_speed_profile(self, required_speed_profile_norm=None):
         # Only use segments in control edges!
-        if required_speed_profile_norm is None:
-            # Initialize required speed profile using edge speed limits.
-            self.required_speed_profile = self.segment_max_speed[
-                self.control_segment_idx
-            ]
-        else:
-            # Unnormalize the speed commands
-            self.required_speed_profile = (
-                required_speed_profile_norm
-                * self.segment_max_speed[self.control_segment_idx]
-            )
+        control_profile_max_speed = self._get_control_profile_max_speed()
+        # Initialize required speed profile using edge speed limits.
+        self.required_speed_profile = control_profile_max_speed
+        if required_speed_profile_norm is not None:
+            # Multiply by the normalized speed profile actions
+            self.required_speed_profile *= required_speed_profile_norm
 
     def _send_speed_actions(self, av_speed_actions):
         # Use internal SUMO car following model. This means that the
@@ -669,8 +704,14 @@ class SumoEnvCentralizedVel(SumoEnvCentralizedBase):
     def _update_metrics(self):
         super()._update_metrics()
         # Update segment speed limits log
+        # TODO: per-. Currently using average
+        average_control_segment_speed_action = (
+            self._get_average_control_segment_speed_action()
+        )
         segment_speed_limits = self.segment_max_speed.copy()
-        segment_speed_limits[self.control_segment_idx] = self.required_speed_profile
+        segment_speed_limits[self.control_segment_idx] = (
+            average_control_segment_speed_action
+        )
         self.required_segment_speed_limit_actions.iloc[self.step_count] = (
             segment_speed_limits
         )
@@ -752,9 +793,13 @@ class SumoEnvCentralizedTau(SumoEnvCentralizedBase):
         segment_time_headway_actions = (
             np.ones_like(self.segment_max_speed) * self.default_tau
         )
-        segment_time_headway_actions[self.control_segment_idx] = (
-            self.required_tau_profile
-        )
+        # TODO: Per-lane control. Currently using average over lanes
+        tau_segment_profile = self.required_tau_profile.copy()
+        if self.per_lane_control:
+            tau_segment_profile = self._get_lane_average_per_lane_profile(
+                tau_segment_profile
+            )
+        segment_time_headway_actions[self.control_segment_idx] = tau_segment_profile
         self.required_segment_time_headway_actions.iloc[self.step_count] = (
             segment_time_headway_actions
         )
