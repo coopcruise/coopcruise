@@ -595,18 +595,22 @@ def plot_mixed_stat_results(
     std_scale_factor=1,
     ax: plt.Axes | None = None,
     label: str | None = None,
+    line_num: int = 0,
 ):
     if ax is None:
         fig, ax = plt.subplots()
         ax: plt.Axes
         add_title = True
-        line_color = "tab:blue"
-        error_color = "tab:cyan"
+        # line_color = "tab:blue"
+        # error_color = "tab:cyan"
     else:
         fig = ax.get_figure()
         add_title = False
-        line_color = "tab:purple"
-        error_color = "tab:pink"
+        # line_color = "tab:purple"
+        # error_color = "tab:pink"
+    cmap = mpl.colormaps["tab20"]
+    line_color = cmap(line_num * 2)
+    error_color = cmap(line_num * 2 + 1)
     # ax_single_mixed_stat_xlabel = list(multi_lane_mixed_stats_rightmost.keys())[0].split("=")[0].replace("_"," ")
     ax_mixed_stat_xlabel = "ACC-equipped vehicle percentage [%]"
     ax_mixed_stat_x_vals = [
@@ -737,8 +741,6 @@ def compute_sim_travel_metrics(sim_logs):
 def analyze_multiple_sim_groups(
     multi_sim_group_dirs: dict,
     save_all_sim_group_results=False,
-    save_dir: str | Path = None,
-    multi_sim_group_name: str = "",
 ):
     metadata = {
         sim_group_name: extract_sim_group_metadata(sim_group_dirs)
@@ -771,7 +773,6 @@ def analyze_multiple_sim_groups(
         compare_av_percent = True
 
     if compare_av_percent and compare_switch_seeds:
-        label = None
         performance_df: pd.DataFrame = (
             (pd.DataFrame(avg_vel_reduction_ref) * 100).T.droplevel(0).T
         )
@@ -797,14 +798,26 @@ def analyze_multiple_sim_groups(
                 best_strategy
             ] / np.sqrt(len(av_percent_perf.columns))
 
-            fig_mixed_stat, ax_mixed_stat = plot_mixed_stat_results(
-                performance, multi_sim_group_name, 1.96, label=label
-            )
-            ax_mixed_stat.set_xlim(left=0 - 100 * 0.05, right=100 * 1.05)
+    return performance
 
-        Path(save_dir).mkdir(exist_ok=True)
-        for format in FIG_SAVE_FORMATS:
-            fig_mixed_stat.savefig(
-                Path(save_dir)
-                / f"{multi_sim_group_name.lower().replace(' ', '_')}_performance.{format}"
-            )
+
+def plot_and_save_mixed_stat_results(
+    performance: dict,
+    save_dir: str | Path,
+    multi_sim_group_name: str = "",
+    axes: plt.Axes = None,
+    line_num: int = 0,
+    label: str = None,
+):
+    fig_mixed_stat, ax_mixed_stat = plot_mixed_stat_results(
+        performance, multi_sim_group_name, 1.96, label=label, ax=axes, line_num=line_num
+    )
+    ax_mixed_stat.set_xlim(left=0 - 100 * 0.05, right=100 * 1.05)
+
+    Path(save_dir).mkdir(exist_ok=True)
+    for format in FIG_SAVE_FORMATS:
+        fig_mixed_stat.savefig(
+            Path(save_dir)
+            / f"{multi_sim_group_name.lower().replace(' ', '_')}_performance.{format}"
+        )
+    return fig_mixed_stat, ax_mixed_stat
