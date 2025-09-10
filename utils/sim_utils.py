@@ -28,6 +28,7 @@ DEF_SUMO_CONFIG = {
     "warm_up_time": 200,
     "merge_flow_duration_single_lane": 30,
     "merge_flow_duration_multi_lane": 50,
+    "merge_flow_percent": 100,
     "break_period_duration": 8400,
     "default_tau": None,
     "keep_veh_names_no_merge": True,
@@ -118,6 +119,7 @@ def create_missing_sumo_config_files(sumo_config_params_update: dict):
         "av_lc": sumo_config_params["lc_params"],
         "warm_up_time": sumo_config_params["warm_up_time"],
         "merge_flow_duration": merge_flow_duration,
+        "merge_flow_percent": sumo_config_params["merge_flow_percent"],
         "break_period_duration": sumo_config_params["break_period_duration"],
         "human_speed_std_0": sumo_config_params["human_speed_std_0"],
     }

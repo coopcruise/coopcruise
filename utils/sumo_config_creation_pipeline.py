@@ -140,6 +140,7 @@ DEF_SIMPLIFIED_CONFIG = {
     },
     "warm_up_time": 200,
     "merge_flow_duration": 30,
+    "merge_flow_percent": 100,
     "break_period_duration": 8400,
     "human_speed_std_0": False,
     "output_suffix": "",
@@ -267,6 +268,7 @@ def get_sumo_config_od_file_stem(simplified_config_overrides):
 def get_sumo_config_output_suffix(simplified_config_overrides):
     simplified_config = DEF_SIMPLIFIED_CONFIG | simplified_config_overrides
 
+    merge_flow_percent = simplified_config["merge_flow_percent"]
     if_single_lane = simplified_config["single_lane"]
     no_merge = simplified_config["no_merge"]
     no_lc = simplified_config["no_lc"]
@@ -282,6 +284,9 @@ def get_sumo_config_output_suffix(simplified_config_overrides):
 
     output_suffix = simplified_config.get("output_suffix")
     output_suffix = "" if output_suffix is None else output_suffix
+
+    if not merge_flow_percent == 100:
+        output_suffix = f"_merge_flow_percent_{merge_flow_percent}" + output_suffix
 
     if no_merge and keep_veh_names_no_merge:
         output_suffix += "_no_merge"
@@ -366,12 +371,34 @@ def get_sumo_config_creation_params(simplified_config_overrides: dict):
     }
 
     config: dict = deepcopy(DEF_CONFIG)
+
+    merge_flow_percent = simplified_config.get("merge_flow_percent")
     if no_merge and keep_veh_names_no_merge:
-        periodic_flow_config_overrides |= {
-            "od_oscillations": {
-                ("taz_4", "taz_reduced_end"): {"high_scale": 0, "low_scale": 0}
+        merge_flow_percent = 0
+
+    assert merge_flow_percent >= 0, (
+        f"merge_flow_percent (requested value: {merge_flow_percent}) must not be negative."
+    )
+
+    if merge_flow_percent is not None:
+        periodic_flow_config_overrides["od_oscillations"] = {}
+        for taz_pair, flow_vals in config["periodic_flow_config"][
+            "od_oscillations"
+        ].items():
+            periodic_flow_config_overrides["od_oscillations"][taz_pair] = {
+                flow_key: flow_val * merge_flow_percent / 100
+                for flow_key, flow_val in flow_vals.items()
             }
-        }
+
+    # We can replace the code below with setting merge_flow_percent=0
+    # before the code above when no_merge=True
+
+    # if no_merge and keep_veh_names_no_merge:
+    #     periodic_flow_config_overrides |= {
+    #         "od_oscillations": {
+    #             ("taz_4", "taz_reduced_end"): {"high_scale": 0, "low_scale": 0}
+    #         }
+    #     }
 
     od_file_path = working_dir / scenario_dir / od_file_name
     network_file_path = working_dir / scenario_dir / network_file_name

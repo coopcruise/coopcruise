@@ -15,77 +15,82 @@ from ray.rllib.env.env_context import EnvContext
 import traci.constants as tc
 
 from sumo_centralized_envs_new import SumoEnvCentralizedTau, SumoEnvCentralizedVel
+from train_ppo_centralized import (
+    add_parser_simulation_params,
+    DEF_SUMO_CONFIG_PARAMS,
+    DEF_SIM_CONFIG_PARAMS,
+)
+
+# from train_ppo_centralized import create_parser
 from utils.sumo_utils import extract_vehicle_ids_from_routes
 from utils.sim_utils import DEF_SUMO_CONFIG, get_centralized_env_config
 
 NUM_ROLLOUT_WORKERS = 10
-INFLOW_TIME_HEADWAY = 2
-AV_PERCENT = 100
-ENV_CLS = "SumoEnvCentralizedTau"
-ENV_CLS_OPTIONS = ["SumoEnvCentralizedTau", "SumoEnvCentralizedVel"]
+# INFLOW_TIME_HEADWAY = 2
+# AV_PERCENT = 100
 
-SINGLE_LANE = False  # True
-NUM_CONTROL_SEGMENTS = 2  # 3 # 4 # 5
+# SINGLE_LANE = False  # True
+# NUM_CONTROL_SEGMENTS = 2  # 3 # 4 # 5
 PER_LANE_CONTROL = False  # True
 
-NUM_SIMULATION_STEPS_PER_STEP = 5
-SIMULATION_TIME = 500  # if SINGLE_LANE else 1000
+# NUM_SIMULATION_STEPS_PER_STEP = 5
+# SIMULATION_TIME = 500  # if SINGLE_LANE else 1000
 
-SECONDS_PER_STEP = 0.5
+# SECONDS_PER_STEP = 0.5
 
 
-USE_LIBSUMO = True
-SHOW_GUI_IN_TRACI_MODE = True
+# USE_LIBSUMO = True
+# SHOW_GUI_IN_TRACI_MODE = True
 
 # Set seed to an integer for deterministic simulation. Set to None for
 # default behavior.
-RANDOM_SEED = None
+# RANDOM_SEED = None
 SUMO_SEED = None  # 0  # None
-RANDOM_AV_SWITCHING_SEED = None  # 0  # None
+# RANDOM_AV_SWITCHING_SEED = None  # 0  # None
 
 NUM_TESTS = 30
 
 RESULTS_DIR = "test"
 
-CHANGE_LC_AV_ONLY = False
-NO_LC = False
-NO_LC_RIGHT = True
-LC_PARAMS = (
-    None  # dict(lcKeepRight=0, lcAssertive=2.5, lcSpeedGain=5, lcImpatience=0.7)
-)
-DEFAULT_TAU = None
-RANDOM_AV_SWITCHING = True
-HUMAN_SPEED_STD_0 = True
+# CHANGE_LC_AV_ONLY = False
+# NO_LC = False
+# NO_LC_RIGHT = True
+# LC_PARAMS = (
+#     None  # dict(lcKeepRight=0, lcAssertive=2.5, lcSpeedGain=5, lcImpatience=0.7)
+# )
+# DEFAULT_TAU = None
+# RANDOM_AV_SWITCHING = True
+# HUMAN_SPEED_STD_0 = True
 
-WARM_UP_TIME = 200  # sec
-MERGE_FLOW_DURATION_SINGLE_LANE = 30  # sec
-MERGE_FLOW_DURATION_MULTI_LANE = 50  # sec
-BREAK_PERIOD_DURATION = 8400  # sec
+# WARM_UP_TIME = 200  # sec
+# MERGE_FLOW_DURATION_SINGLE_LANE = 30  # sec
+# MERGE_FLOW_DURATION_MULTI_LANE = 50  # sec
+# BREAK_PERIOD_DURATION = 8400  # sec
 
-KEEP_VEH_NAMES_NO_MERGE = True
+# KEEP_VEH_NAMES_NO_MERGE = True
 
 # NETWORK_FILE_NAME = None
-NETWORK_FILE_NAME = (
-    "short_merge_lane_separate_exit_lane_disconnected_merge_lane.net.xml"
-)
+# NETWORK_FILE_NAME = (
+#     "short_merge_lane_separate_exit_lane_disconnected_merge_lane.net.xml"
+# )
 
 DEF_RL_CONTROL_PARAMS = {
     "alg_checkpoint_path": None,  # Must be overridden to use RL control
     "rl_per_lane_control": False,
 }
 
-DEF_TAU_CONTROL_CONSTANTS = {
-    "tau_control_only_rightmost_lane": True,
-    # The following is not relevant if automatic_tau_duration=True
-    "tau_control_start_time": 200,
-    "tau_control_duration": 100,
-}
+# DEF_TAU_CONTROL_CONSTANTS = {
+#     "tau_control_only_rightmost_lane": True,
+#     # The following is not relevant if automatic_tau_duration=True
+#     "tau_control_start_time": 200,
+#     "tau_control_duration": 100,
+# }
 
 
-def create_parser():
+def create_eval_parser():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description="Train area-based time-headway traffic congestion controller using PPO.",
+        description="Evaluate traffic congestion controller",
         epilog="python3 -i <this-script>",
     )
 
@@ -93,47 +98,7 @@ def create_parser():
         "path", type=str, nargs="?", default=None, help="Path to the checkpoint to run"
     )
 
-    # optional input parameters
-    parser.add_argument(
-        "--env_class",
-        type=str,
-        default=ENV_CLS,
-        help=f"Environment class name for evaluation. One of: {ENV_CLS_OPTIONS}",
-    )
-    parser.add_argument(
-        "--av_percent",
-        type=int,
-        default=AV_PERCENT,
-        help="Percent of ACC-equipped vehicles.",
-    )
-
-    parser.add_argument(
-        "--num_control_seg",
-        type=int,
-        default=NUM_CONTROL_SEGMENTS,
-        help="Number of segments before the bottleneck within which to control ACC-equipped vehicles.",
-    )
-
-    parser.add_argument(
-        "--sim_time",
-        type=int,
-        default=SIMULATION_TIME,
-        help="Simulation time horizon.",
-    )
-
-    parser.add_argument(
-        "--random_seed",
-        type=int,
-        default=RANDOM_SEED,
-        help="Random seed to use for SUMO, ACC-vehicle choice, and RL training.",
-    )
-
-    parser.add_argument(
-        "--single_lane",
-        default=SINGLE_LANE,
-        action="store_true",
-        help="Whether to use a single lane scenario",
-    )
+    parser = add_parser_simulation_params(parser)
 
     parser.add_argument(
         "--num_workers",
@@ -519,7 +484,7 @@ def do_job(tasks_to_accomplish: Queue, worker_index: int | None = None):
 
 
 if __name__ == "__main__":
-    parser = create_parser()
+    parser = create_eval_parser()
     # Parse the arguments
     args = parser.parse_args()
 
@@ -557,25 +522,11 @@ if __name__ == "__main__":
         "short_merge_lane_separate_exit_lane_disconnected_merge_lane.net.xml"
     )
 
-    sumo_config_params = {
+    sumo_config_params = DEF_SUMO_CONFIG_PARAMS | {
         "scenario_dir": scenario_dir,
-        "od_flow_file_name": "edge_flows_interval_8400_taz_reduced",
         "no_merge": no_merge,
         "single_lane": single_lane,
-        "change_lc_av_only": CHANGE_LC_AV_ONLY,
-        "no_lc": NO_LC,
-        "no_lc_right": NO_LC_RIGHT,
-        "lc_params": LC_PARAMS,
         "av_percent": av_percent,
-        "warm_up_time": WARM_UP_TIME,
-        "merge_flow_duration_single_lane": MERGE_FLOW_DURATION_SINGLE_LANE,
-        "merge_flow_duration_multi_lane": MERGE_FLOW_DURATION_MULTI_LANE,
-        "break_period_duration": BREAK_PERIOD_DURATION,
-        "default_tau": DEFAULT_TAU,
-        "keep_veh_names_no_merge": KEEP_VEH_NAMES_NO_MERGE,
-        "inflow_time_headway": INFLOW_TIME_HEADWAY,
-        "human_speed_std_0": HUMAN_SPEED_STD_0,
-        "random_av_switching": RANDOM_AV_SWITCHING,
         "random_av_switching_seed": random_av_switching_seed,
     }
 
@@ -633,11 +584,8 @@ if __name__ == "__main__":
     }
     custom_name_postfix = None
 
-    sim_config_params = {
-        "use_libsumo": USE_LIBSUMO,
-        "show_gui_in_traci_mode": SHOW_GUI_IN_TRACI_MODE,
+    sim_config_params = DEF_SIM_CONFIG_PARAMS | {
         "sumo_seed": sumo_seed,
-        "seconds_per_step": 0.5,
         "use_learned_control": use_learned_control,
         "use_tau_control": use_tau_control,
         "num_simulation_steps_per_step": num_simulation_steps_per_step,
