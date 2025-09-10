@@ -16,7 +16,7 @@ import traci.constants as tc
 
 from sumo_centralized_env_tau import SumoEnvCentralizedTau
 from utils.sumo_utils import extract_vehicle_ids_from_routes
-from utils.sim_utils import DEF_SUMO_CONFIG, get_tau_env_config
+from utils.sim_utils import DEF_SUMO_CONFIG, get_centralized_env_config
 
 NUM_ROLLOUT_WORKERS = 10
 INFLOW_TIME_HEADWAY = 2
@@ -307,7 +307,9 @@ def simulate(
 
     sim_config_params.update(custom_name_postfix=custom_name_postfix)
 
-    env_config = get_tau_env_config(sumo_config_params_update, sim_config_params)
+    env_config = get_centralized_env_config(
+        sumo_config_params_update, sim_config_params
+    )
     if worker_index is not None:
         env_config = EnvContext(env_config, worker_index=worker_index)
 

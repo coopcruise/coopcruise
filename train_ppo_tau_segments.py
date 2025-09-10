@@ -6,7 +6,7 @@ from ray.rllib.algorithms.ppo.ppo import PPO, PPOConfig
 from ray.rllib.algorithms.algorithm import Algorithm
 from sumo_centralized_envs_new import SumoEnvCentralizedTau
 from ray.tune.logger import UnifiedLogger
-from utils.sim_utils import get_tau_env_config
+from utils.sim_utils import get_centralized_env_config
 from ray.tune.registry import register_env
 from ray.train.constants import _get_defaults_results_dir
 
@@ -238,7 +238,7 @@ if __name__ == "__main__":
 
         num_simulation_steps = int(SIMULATION_TIME / SECONDS_PER_STEP)
 
-        env_config = get_tau_env_config(sumo_config_params, sim_config_params)
+        env_config = get_centralized_env_config(sumo_config_params, sim_config_params)
         # If False, uses environment steps to count rollout and batch steps. Each
         # environment step can include many agent (autonomous vehicle) steps.
         count_steps_by_agent = False

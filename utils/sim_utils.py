@@ -126,7 +126,9 @@ def create_missing_sumo_config_files(sumo_config_params_update: dict):
     return sumo_config_path
 
 
-def get_tau_env_config(sumo_config_params_update: dict, sim_config_params: dict):
+def get_centralized_env_config(
+    sumo_config_params_update: dict, sim_config_params: dict
+):
     sumo_config_params = DEF_SUMO_CONFIG | sumo_config_params_update
     sumo_config_file_name, sumo_config_path = get_sumo_config_file_name(
         sumo_config_params

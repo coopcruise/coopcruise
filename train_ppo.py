@@ -3,7 +3,7 @@ import argparse
 from ray.rllib.algorithms.ppo.ppo import PPO, PPOConfig
 from ray.rllib.algorithms.algorithm import Algorithm
 from sumo_centralized_env_tau import SumoEnvCentralizedTau
-from utils.sim_utils import get_tau_env_config
+from utils.sim_utils import get_centralized_env_config
 
 # This script implements states, actions and rewards of the MDP model in Section
 # 4.4 of the paper, and trains an RL controller to optimize it using the PPO
@@ -201,7 +201,7 @@ if __name__ == "__main__":
 
         num_simulation_steps = int(SIMULATION_TIME / SECONDS_PER_STEP)
 
-        env_config = get_tau_env_config(sumo_config_params, sim_config_params)
+        env_config = get_centralized_env_config(sumo_config_params, sim_config_params)
         # If False, uses environment steps to count rollout and batch steps. Each
         # environment step can include many agent (autonomous vehicle) steps.
         count_steps_by_agent = False
