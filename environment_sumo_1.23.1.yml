@@ -1,0 +1,44 @@
+name: sumo_rl_1.23.1
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+  - pip
+  - python=3.10.13
+  - setuptools
+  - pip:
+      - debugpy==1.8.0
+      - dm-tree==0.1.8
+      - gymnasium==0.28.1
+      - ipykernel==6.25.2
+      - lz4==4.3.2
+      - markdown-it-py==3.0.0
+      - matplotlib==3.8.0
+      - networkx==3.1
+      - numpy==1.26.0
+      - pandas==2.1.1
+      - pyarrow==14.0.2
+      - ray==2.7.0
+      - rich==13.7.0
+      - scikit-image==0.22.0
+      - scipy==1.11.4
+      # - sumolib==1.18.0
+      - sumolib==1.23.1
+      - tensorboard==2.15.1
+      - tensorboardx==2.6.2
+      - tensorflow==2.15.0
+      - torch==2.1.0
+      - torchaudio==2.1.0
+      - torchvision==0.16.0
+      - tqdm==4.66.1
+      # - traci==1.18.0
+      - traci==1.23.1
+      - typer==0.9.0
+      # - libsumo==1.18.0
+      - libsumo==1.23.1
+      # - eclipse-sumo==1.17.0
+      - eclipse-sumo==1.23.1
+variables:
+  #PYTHONPATH:   PYTHONPATH: PATH\TO\Eclipse\Sumo\tools;PATH\TO\CODE\DIR
+  PYTHONPATH: $PYTHONPATH:/data/transfer/controls/congestion/coopcruise
