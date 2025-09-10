@@ -99,7 +99,7 @@ class SumoConfig:
         self,
         scenario_dir,
         sumo_config_file,
-        save_states: bool = True,
+        save_states: bool = False,
         state_dir=None,
         save_state_time_intervals: int = DEF_SAVE_STATE_TIME_INTERVALS,
         load_state_file=None,
