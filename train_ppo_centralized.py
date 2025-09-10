@@ -411,7 +411,7 @@ if __name__ == "__main__":
                 },
             )
             .debugging(
-                seed=RL_TRAIN_SEED,
+                seed=rl_train_seed,
             )
         )
         alg_config._disable_preprocessor_api = True
