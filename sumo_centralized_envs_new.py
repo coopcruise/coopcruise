@@ -13,6 +13,7 @@ from utils.sumo_utils import (
     get_veh_type_param,
 )
 from gymnasium.spaces import flatten_space, flatten
+from matplotlib import colormaps
 
 
 class SumoEnvCentralizedBase(SumoEnv):
@@ -228,6 +229,12 @@ class SumoEnvCentralizedBase(SumoEnv):
         self.max_measurement_location = max(self.measurement_locations)
 
         # for tracking lane changes
+        self.color_lane_change_vehicles = (
+            config.get("color_lane_change_vehicles", False) or False
+        )
+        self.color_av_by_action_idx = (
+            config.get("color_av_by_action_idx", False) or False
+        )
         self.av2lane = {}
         self._init_actions()
 
@@ -319,11 +326,10 @@ class SumoEnvCentralizedBase(SumoEnv):
         return centralized_obs, centralized_info
 
     def step(self, action: Dict[str, Any]):
-        self._step_before_setting_action()
         self._set_action(action)
         return self._step_after_setting_action()
 
-    def _step_before_setting_action(self):
+    def _color_lane_change_vehicles(self):
         # coloring vehicles that changed lanes
         av_data = self._get_veh_data(self.control_veh_type)
         for av_id in av_data:
@@ -399,17 +405,36 @@ class SumoEnvCentralizedBase(SumoEnv):
                     av_actions.update(
                         {
                             av_id: self.RETURN_TO_DEFAULT_CMD
-                            for av_id, idx in zip(segment_avs, action_prof_idx)
+                            for av_id in segment_avs
                             if not int(av_data[av_id][tc.VAR_LANE_ID].split("_")[-1])
                             == 0
                         }
                     )
+
+                if self.color_av_by_action_idx:
+                    for av_id, idx in zip(segment_avs, action_prof_idx):
+                        if not av_actions[av_id] == self.RETURN_TO_DEFAULT_CMD:
+                            color = tuple(
+                                (np.array(colormaps["tab10"](idx))[:3] * 255).astype(
+                                    int
+                                )
+                            )
+                            self.traci_conn.vehicle.setColor(av_id, color)
+
+        if self.color_av_by_action_idx:
+            for av_id, av_cmd in av_actions.items():
+                if av_cmd == self.RETURN_TO_DEFAULT_CMD:
+                    self.traci_conn.vehicle.setColor(av_id, (0, 255, 0))
+
         return av_actions
 
     def _step_after_setting_action(self):
         # Progress one step. Uses internal car following model
         # and progresses a single simulation step, returning speed profile
         # observations.
+        if self.color_lane_change_vehicles:
+            self._color_lane_change_vehicles()
+
         obs, rewards, terminateds, truncateds, infos = super().step({})
         veh_data = self._get_veh_data()
 
