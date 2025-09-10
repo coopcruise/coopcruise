@@ -7,16 +7,15 @@ import tempfile
 import numpy as np
 from ray.rllib.algorithms.ppo.ppo import PPO, PPOConfig
 from ray.rllib.algorithms.algorithm import Algorithm
-from sumo_centralized_envs_new import SumoEnvCentralizedTau, SumoEnvCentralizedVel
+from sumo_centralized_envs_new import (
+    SumoEnvCentralizedTau,
+    SumoEnvCentralizedVel,
+    SumoEnvCentralizedMinGap,
+)
 from ray.tune.logger import UnifiedLogger
 from utils.sim_utils import get_centralized_env_config
 from ray.tune.registry import register_env
 from ray.train.constants import _get_defaults_results_dir
-
-
-def env_creator_template(config, env_class):
-    # This allows access to additional parameters, such as worker_index in the environment config
-    return env_class(config)  # Return a gymnasium.Env instance.
 
 
 # This script implements states, actions and rewards of the MDP model in Section
@@ -58,7 +57,11 @@ LC_PARAMS = (
 )
 
 ENV_CLS_STR = "SumoEnvCentralizedTau"
-ENV_CLS_STR_OPTIONS = ["SumoEnvCentralizedTau", "SumoEnvCentralizedVel"]
+ENV_CLS_STR_OPTIONS = [
+    "SumoEnvCentralizedTau",
+    "SumoEnvCentralizedVel",
+    "SumoEnvCentralizedMinGap",
+]
 
 DEFAULT_TAU = None
 RANDOM_AV_SWITCHING = True
@@ -74,6 +77,7 @@ KEEP_VEH_NAMES_NO_MERGE = True
 # Requires creating a different flow file to change that
 
 SCENARIO_DIR = "scenarios/single_junction/rl_scenarios"
+# SCENARIO_DIR = "scenarios/single_junction/rl_scenarios_test"
 # NETWORK_FILE_NAME = None
 NETWORK_FILE_NAME = (
     "short_merge_lane_separate_exit_lane_disconnected_merge_lane.net.xml"
@@ -138,6 +142,18 @@ DEF_SIM_CONFIG_PARAMS = {
 def env_creator_template(config, env_class):
     # This allows access to additional parameters, such as worker_index in the environment config
     return env_class(config)  # Return a gymnasium.Env instance.
+
+
+def get_env_class_from_str(env_class_str):
+    if env_class_str == "SumoEnvCentralizedTau":
+        return SumoEnvCentralizedTau
+    elif env_class_str == "SumoEnvCentralizedVel":
+        return SumoEnvCentralizedVel
+    elif env_class_str == "SumoEnvCentralizedMinGap":
+        return SumoEnvCentralizedMinGap
+    else:
+        raise ValueError(f"env_class argument must be one of: {ENV_CLS_STR_OPTIONS}")
+
 
 def policy_mapping_function(agent_id: str, episode, worker, **kwargs):
     return "hierarchical_policy"
@@ -254,7 +270,8 @@ if __name__ == "__main__":
     checkpoint_num = 0
     if checkpoint_path is not None:
         algo = Algorithm.from_checkpoint(str(checkpoint_path))
-        checkpoint_num = int(str(checkpoint_path).split("checkpoint_")[-1]) + 1
+        # checkpoint_num = int(str(checkpoint_path).split("checkpoint_")[-1]) + 1
+        checkpoint_num = algo.training_iteration + 1
 
     else:
         parser = create_learning_parser()
@@ -271,27 +288,7 @@ if __name__ == "__main__":
         results_dir = args.results_dir
         env_class_str = args.env_class
 
-        if env_class_str == "SumoEnvCentralizedTau":
-            env_class = SumoEnvCentralizedTau
-        elif env_class_str == "SumoEnvCentralizedVel":
-            env_class = SumoEnvCentralizedVel
-        else:
-            raise ValueError(
-                f"env_class argument must be one of: {ENV_CLS_STR_OPTIONS}"
-            )
-
-        def logger_creator(config):
-            timestr = datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
-            lane_str = "single_lane" if single_lane else "multi_lane"
-            av_percent_str = f"av_{av_percent}"
-            seed_str = f"seed_{random_seed}"
-            logdir_prefix = (
-                f"PPO_{env_class_str}_{lane_str}_{av_percent_str}_{seed_str}_{timestr}"
-            )
-            if not os.path.exists(results_dir):
-                os.makedirs(results_dir, exist_ok=True)
-            logdir = tempfile.mkdtemp(prefix=logdir_prefix, dir=results_dir)
-            return UnifiedLogger(config, logdir, loggers=None)
+        env_class = get_env_class_from_str(env_class_str)
 
         random_av_switching_seed = (
             random_seed if random_seed is not None else RANDOM_AV_SWITCHING_SEED
@@ -415,6 +412,29 @@ if __name__ == "__main__":
             )
         )
         alg_config._disable_preprocessor_api = True
+
+        def logger_creator(config):
+            timestr = datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
+            lane_str = "single_lane" if single_lane else "multi_lane"
+            av_percent_str = f"av_{av_percent}"
+            merge_flow_percent_str = (
+                f"_merge_flow_percent_{merge_flow_percent}"
+                if not merge_flow_percent == MERGE_FLOW_PERCENT
+                else ""
+            )
+            per_lane_str = "_per_lane" if per_lane_control else ""
+            right_lane_str = "_right_lane" if right_lane_control else ""
+            num_control_seg_str = (
+                f"_num_ctrl_seg_{num_control_seg}"
+                if not num_control_seg == NUM_CONTROL_SEGMENTS
+                else ""
+            )
+            seed_str = f"seed_{random_seed}"
+            logdir_prefix = f"PPO_{env_class_str}_{lane_str}_{av_percent_str}{num_control_seg_str}{per_lane_str}{right_lane_str}{merge_flow_percent_str}_{seed_str}_{timestr}"
+            if not os.path.exists(results_dir):
+                os.makedirs(results_dir, exist_ok=True)
+            logdir = tempfile.mkdtemp(prefix=logdir_prefix, dir=results_dir)
+            return UnifiedLogger(config, logdir, loggers=None)
 
         algo = PPO(alg_config, logger_creator=logger_creator)
 

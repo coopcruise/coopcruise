@@ -14,8 +14,10 @@ from ray.rllib.utils.spaces.space_utils import unsquash_action
 from ray.rllib.env.env_context import EnvContext
 import traci.constants as tc
 
-from sumo_centralized_envs_new import SumoEnvCentralizedTau, SumoEnvCentralizedVel
+from sumo_centralized_envs_new import SumoEnvCentralizedTau
+
 from train_ppo_centralized import (
+    get_env_class_from_str,
     add_parser_simulation_params,
     DEF_SUMO_CONFIG_PARAMS,
     DEF_SIM_CONFIG_PARAMS,
@@ -286,12 +288,7 @@ def simulate(
     if worker_index is not None:
         env_config = EnvContext(env_config, worker_index=worker_index)
 
-    if sim_config_params["env_class"] == "SumoEnvCentralizedTau":
-        env_class_obj = SumoEnvCentralizedTau
-    elif sim_config_params["env_class"] == "SumoEnvCentralizedVel":
-        env_class_obj = SumoEnvCentralizedVel
-    else:
-        raise ValueError(f"env_class argument must be one of: {ENV_CLS_OPTIONS}")
+    env_class_obj = get_env_class_from_str(sim_config_params["env_class"])
 
     env = env_class_obj(env_config)
 

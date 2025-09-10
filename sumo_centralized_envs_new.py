@@ -836,3 +836,94 @@ class SumoEnvCentralizedTau(SumoEnvCentralizedBase):
             self.required_segment_time_headway_actions.to_csv(
                 Path(self.episode_results_dir) / "segment_time_headway.csv"
             )
+
+
+class SumoEnvCentralizedMinGap(SumoEnvCentralizedBase):
+    DEF_MIN_MIN_GAP = 2.5  # For safety: SUMO default value (m)
+    DEF_MAX_MIN_GAP = 30  # m
+
+    def __init__(self, config: dict):
+        super().__init__(config)
+        self.min_min_gap = config.get("min_min_gap") or self.DEF_MIN_MIN_GAP
+        self.max_min_gap = config.get("max_min_gap") or self.DEF_MAX_MIN_GAP
+
+    # @override  # Only from python 3.12
+    def _init_actions(self):
+        super()._init_actions()
+        self.default_min_gap = self.DEF_MIN_MIN_GAP
+        # Min gap is not in the route file vehicle type definition and therefore this cannot be used
+        # Maybe it should be?
+        # If the default vtype should make it go back to the default value, we might need to define min gap in the vtype
+
+        # self.default_min_gap = get_veh_type_param(
+        #     self.route_path, self.control_veh_type, "tau"
+        # )
+        self._update_required_min_gap_profile()
+
+    def _set_action(self, action):
+        if self.CENTRALIZED_AGENT_NAME in action.keys():
+            self._update_required_min_gap_profile(action[self.CENTRALIZED_AGENT_NAME])
+        # Extract AV tau actions from tau profile
+        av_tau_actions = self._extract_av_actions(self.required_min_gap_profile)
+        self._send_min_gap_actions(av_tau_actions)
+
+    def _update_required_min_gap_profile(self, required_min_gap_norm=None):
+        if required_min_gap_norm is None:
+            # Initialize required min gap profile using default value for AV.
+            self.required_min_gap_profile = (
+                np.ones(self.action_space_len) * self.default_min_gap
+            )
+        else:
+            # Unnormalize actions
+            self.required_min_gap_profile = (
+                required_min_gap_norm * (self.max_min_gap - self.min_min_gap)
+                + self.min_min_gap
+            )
+
+    def _send_min_gap_actions(self, av_tau_actions: dict):
+        veh_data = self._get_veh_data()
+        for agent_id, required_min_gap in av_tau_actions.items():
+            if required_min_gap < 0 or required_min_gap == self.RETURN_TO_DEFAULT_CMD:
+                if not veh_data[agent_id][tc.VAR_TYPE] == self.control_veh_type:
+                    # Might not be required
+                    self.traci_conn.vehicle.setMinGap(agent_id, self.default_min_gap)
+                    # Return to default AC type parameters
+                    self.traci_conn.vehicle.setType(agent_id, self.control_veh_type)
+            else:
+                self.traci_conn.vehicle.setMinGap(
+                    agent_id, required_min_gap.astype(float)
+                )
+
+    def _initialize_metrics_data_structures(self):
+        super()._initialize_metrics_data_structures()
+        # Segment time headway log initialization
+        self.required_segment_min_gap_actions = pd.DataFrame(
+            np.zeros((self.num_steps, len(self.segment_data))),
+            index=np.arange(self.num_steps) * self.sumo_config.seconds_per_step,
+            columns=self.segment_data.keys(),
+        )
+
+    def _update_metrics(self):
+        super()._update_metrics()
+        # Update segment time-headway log
+        segment_min_gap_actions = (
+            np.ones_like(self.segment_max_speed) * self.default_min_gap
+        )
+        # TODO: Per-lane control. Currently using average over lanes
+        min_gap_segment_profile = self.required_min_gap_profile.copy()
+        if self.per_lane_control:
+            min_gap_segment_profile = self._get_lane_average_per_lane_profile(
+                min_gap_segment_profile
+            )
+        segment_min_gap_actions[self.control_segment_idx] = min_gap_segment_profile
+        self.required_segment_min_gap_actions.iloc[self.step_count] = (
+            segment_min_gap_actions
+        )
+
+    def log_episode(self):
+        super().log_episode()
+        if self.eval_config is not None:
+            # Save segment time headway log
+            self.required_segment_min_gap_actions.to_csv(
+                Path(self.episode_results_dir) / "segment_min_gap.csv"
+            )
