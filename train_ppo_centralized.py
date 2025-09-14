@@ -96,6 +96,8 @@ SCENARIO_PARAMS = {
     "state_merge_edges": ["277208926"],
 }
 
+START_POLICY_AFTER_WARM_UP = False
+
 ENV_CONFIG_OVERRIDES = {"flat_obs_space": True}
 CUSTOM_NAME_POSTFIX = None
 
@@ -237,6 +239,12 @@ def add_parser_simulation_params(parser: argparse.ArgumentParser):
         ),
     )
 
+    parser.add_argument(
+        "--start_policy_after_warm_up",
+        default=START_POLICY_AFTER_WARM_UP,
+        action="store_true",
+        help="Whether to start sending policy actions only after the warm up time.",
+    )
     return parser
 
 
@@ -295,6 +303,7 @@ if __name__ == "__main__":
         results_dir = args.results_dir
         env_class_str = args.env_class
         warm_up_time = args.warm_up
+        start_policy_after_warm_up = args.start_policy_after_warm_up
 
         env_class = get_env_class_from_str(env_class_str)
 
@@ -316,7 +325,8 @@ if __name__ == "__main__":
             sumo_config_params.update({"network_file_name": NETWORK_FILE_NAME})
 
         env_config_overrides = ENV_CONFIG_OVERRIDES | {
-            "right_lane_control": right_lane_control
+            "right_lane_control": right_lane_control,
+            "start_policy_after_warm_up": start_policy_after_warm_up,
         }
 
         sim_config_params = DEF_SIM_CONFIG_PARAMS | {
@@ -427,6 +437,7 @@ if __name__ == "__main__":
             lane_str = "single_lane" if single_lane else "multi_lane"
             av_percent_str = f"av_{av_percent}"
             warm_up_str = f"_warm_up_{warm_up_time}"
+            start_policy_after_warm_up_str = "_start_after_warn_up"
             merge_flow_percent_str = (
                 f"_merge_flow_percent_{merge_flow_percent}"
                 if not merge_flow_percent == MERGE_FLOW_PERCENT
@@ -440,7 +451,10 @@ if __name__ == "__main__":
                 else ""
             )
             seed_str = f"seed_{random_seed}"
-            logdir_prefix = f"PPO_{env_class_str}{warm_up_str}_{lane_str}_{av_percent_str}{num_control_seg_str}{per_lane_str}{right_lane_str}{merge_flow_percent_str}_{seed_str}_{timestr}"
+            logdir_prefix = (
+                f"PPO_{env_class_str}{warm_up_str}{start_policy_after_warm_up_str}_{lane_str}_{av_percent_str}"
+                + f"{num_control_seg_str}{per_lane_str}{right_lane_str}{merge_flow_percent_str}_{seed_str}_{timestr}"
+            )
             if not os.path.exists(results_dir):
                 os.makedirs(results_dir, exist_ok=True)
             logdir = tempfile.mkdtemp(prefix=logdir_prefix, dir=results_dir)

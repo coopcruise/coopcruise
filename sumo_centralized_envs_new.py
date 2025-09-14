@@ -114,6 +114,10 @@ class SumoEnvCentralizedBase(SumoEnv):
             and not self.per_lane_control
         )
 
+        self.start_policy_after_warm_up = (
+            config.get("start_policy_after_warm_up") or False
+        )
+
         self.action_space_len = self.num_control_segments
         self.control_segment_lanes = self.num_segment_lanes[self.control_segment_idx]
         self.num_control_segment_lanes = sum(self.control_segment_lanes)
@@ -318,11 +322,17 @@ class SumoEnvCentralizedBase(SumoEnv):
         self.num_waiting_veh = 0
         self._agent_ids = set([self.CENTRALIZED_AGENT_NAME])
         self.av2lane = {}
+        self.current_reward = {self.CENTRALIZED_AGENT_NAME: 0}
+
+        if self.start_policy_after_warm_up:
+            # return self._progress_sim_steps(self.num_warm_up_steps)
+            centralized_obs, _, _, _, centralized_info = self.step({})
+            return centralized_obs, centralized_info
+
         veh_data = self._get_veh_data()
         centralized_obs = self._get_centralized_obs(veh_data)
         centralized_info = {}
         self.prev_step_veh_ids = set(veh_data.keys())
-        self.current_reward = {self.CENTRALIZED_AGENT_NAME: 0}
         return centralized_obs, centralized_info
 
     def step(self, action: Dict[str, Any]):
@@ -461,10 +471,22 @@ class SumoEnvCentralizedBase(SumoEnv):
         )
         # Return observation either when the episode ends or when the action
         # should be updated.
+        should_update_action = (
+            (
+                self.step_count
+                - (self.num_warm_up_steps if self.start_policy_after_warm_up else 0)
+            )
+            % self.num_simulation_steps_per_step
+            == 0
+        ) and (
+            self.step_count
+            >= (self.num_warm_up_steps * self.start_policy_after_warm_up)
+        )
         if (
             truncateds["__all__"]
             or terminateds["__all__"]
-            or self.step_count % self.num_simulation_steps_per_step == 0
+            # or self.step_count % self.num_simulation_steps_per_step == 0
+            or should_update_action
         ):
             centralized_obs = self._get_centralized_obs(veh_data)
             self._agent_ids = set([self.CENTRALIZED_AGENT_NAME])

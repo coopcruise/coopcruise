@@ -28,6 +28,7 @@ from train_ppo_centralized import (
     RANDOM_AV_SWITCHING,
     WARM_UP_TIME,
     NUM_CONTROL_SEGMENTS,
+    START_POLICY_AFTER_WARM_UP
 )
 
 MERGE_FLOW_PERCENT = 100
@@ -45,6 +46,8 @@ DEBUG_SIM_CONFIG_PARAMS = {
     "no_rerun_existing": False,
     "show_gui_in_traci_mode": True,
 }
+
+DEBUG_HUMAN_SIM_CONFIG_PARAMS = DEBUG_SIM_CONFIG_PARAMS | {"use_learned_control": False}
 
 DEBUG_ENV_CONFIG_OVERRIDES = {"color_av_by_action_idx": True}
 
@@ -142,6 +145,7 @@ if __name__ == "__main__":
     random_av_switching = env_config.get("random_av_switching") or RANDOM_AV_SWITCHING
     warm_up_time = env_config.get("warm_up_time") or WARM_UP_TIME
     right_lane_control = env_config.get("right_lane_control") or RIGHT_LANE_CONTROL
+    start_policy_after_warm_up = env_config.get("start_policy_after_warm_up") or START_POLICY_AFTER_WARM_UP
 
     sumo_config_file_name: str = env_config["sumo_config"].sumo_config_file
     if "merge_flow_percent" in sumo_config_file_name:
@@ -196,6 +200,7 @@ if __name__ == "__main__":
         "flat_obs_space": True,
         "right_lane_control": right_lane_control,
         "color_av_by_action_idx": color_av_by_action_idx,
+        "start_policy_after_warm_up": start_policy_after_warm_up,
     }
     custom_name_postfix = None
 
