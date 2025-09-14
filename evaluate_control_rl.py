@@ -78,6 +78,13 @@ def add_parser_args(parser: argparse.ArgumentParser):
         action="store_true",
         help="Whether to run debug mode. In debug mode, SUMO GUI is shown and only a single task is performed",
     )
+
+    parser.add_argument(
+        "--debug_human",
+        default=False,
+        action="store_true",
+        help="Whether to run debug mode with human only. In debug mode, SUMO GUI is shown and only a single task is performed",
+    )
     return parser
 
 
@@ -88,6 +95,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     debug = args.debug
+    debug_human = args.debug_human
+    if debug_human:
+        debug = True
 
     num_processes = args.num_workers if not debug else 0
 
@@ -207,9 +217,11 @@ if __name__ == "__main__":
         "env_class": env_class,
     }
 
-    if debug:
+    if debug or debug_human:
         sumo_config_params |= DEBUG_SUMO_CONFIG_PARAMS
-        sim_config_params |= DEBUG_SIM_CONFIG_PARAMS
+        sim_config_params |= (
+            DEBUG_HUMAN_SIM_CONFIG_PARAMS if debug_human else DEBUG_SIM_CONFIG_PARAMS
+        )
         env_config_overrides |= DEBUG_ENV_CONFIG_OVERRIDES
 
     sim_queue = Queue()
