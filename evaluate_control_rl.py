@@ -21,6 +21,8 @@ from evaluate_control_new import (
 from train_ppo_centralized import (
     DEF_SIM_CONFIG_PARAMS,
     DEF_SUMO_CONFIG_PARAMS,
+    NUM_REMOVE_END_STATE_SEGMENTS,
+    NUM_REMOVE_START_STATE_SEGMENTS,
     NUM_SIMULATION_STEPS_PER_STEP,
     SIMULATION_TIME,
     SINGLE_LANE,
@@ -28,7 +30,7 @@ from train_ppo_centralized import (
     RANDOM_AV_SWITCHING,
     WARM_UP_TIME,
     NUM_CONTROL_SEGMENTS,
-    START_POLICY_AFTER_WARM_UP
+    START_POLICY_AFTER_WARM_UP,
 )
 
 MERGE_FLOW_PERCENT = 100
@@ -145,7 +147,16 @@ if __name__ == "__main__":
     random_av_switching = env_config.get("random_av_switching") or RANDOM_AV_SWITCHING
     warm_up_time = env_config.get("warm_up_time") or WARM_UP_TIME
     right_lane_control = env_config.get("right_lane_control") or RIGHT_LANE_CONTROL
-    start_policy_after_warm_up = env_config.get("start_policy_after_warm_up") or START_POLICY_AFTER_WARM_UP
+    start_policy_after_warm_up = (
+        env_config.get("start_policy_after_warm_up") or START_POLICY_AFTER_WARM_UP
+    )
+    num_remove_start_state_segments = (
+        env_config.get("num_remove_start_state_segments")
+        or NUM_REMOVE_START_STATE_SEGMENTS
+    )
+    num_remove_end_state_segments = (
+        env_config.get("num_remove_end_state_segments") or NUM_REMOVE_END_STATE_SEGMENTS
+    )
 
     sumo_config_file_name: str = env_config["sumo_config"].sumo_config_file
     if "merge_flow_percent" in sumo_config_file_name:
@@ -201,6 +212,8 @@ if __name__ == "__main__":
         "right_lane_control": right_lane_control,
         "color_av_by_action_idx": color_av_by_action_idx,
         "start_policy_after_warm_up": start_policy_after_warm_up,
+        "num_remove_start_state_segments": num_remove_start_state_segments,
+        "num_remove_end_state_segments": num_remove_end_state_segments,
     }
     custom_name_postfix = None
 

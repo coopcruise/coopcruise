@@ -96,6 +96,9 @@ SCENARIO_PARAMS = {
     "state_merge_edges": ["277208926"],
 }
 
+NUM_REMOVE_START_STATE_SEGMENTS = 0
+NUM_REMOVE_END_STATE_SEGMENTS = 0
+
 START_POLICY_AFTER_WARM_UP = False
 
 ENV_CONFIG_OVERRIDES = {"flat_obs_space": True}
@@ -245,6 +248,20 @@ def add_parser_simulation_params(parser: argparse.ArgumentParser):
         action="store_true",
         help="Whether to start sending policy actions only after the warm up time.",
     )
+
+    parser.add_argument(
+        "--num_remove_start_state_segments",
+        type=int,
+        default=NUM_REMOVE_START_STATE_SEGMENTS,
+        help="Number of segments to remove from state, counted from upstream forwards",
+    )
+
+    parser.add_argument(
+        "--num_remove_end_state_segments",
+        type=int,
+        default=NUM_REMOVE_END_STATE_SEGMENTS,
+        help="Number of segments to remove from state, counted from downstream backwards",
+    )
     return parser
 
 
@@ -304,6 +321,8 @@ if __name__ == "__main__":
         env_class_str = args.env_class
         warm_up_time = args.warm_up
         start_policy_after_warm_up = args.start_policy_after_warm_up
+        num_remove_start_state_segments = args.num_remove_start_state_segments
+        num_remove_end_state_segments = args.num_remove_end_state_segments
 
         env_class = get_env_class_from_str(env_class_str)
 
@@ -327,6 +346,8 @@ if __name__ == "__main__":
         env_config_overrides = ENV_CONFIG_OVERRIDES | {
             "right_lane_control": right_lane_control,
             "start_policy_after_warm_up": start_policy_after_warm_up,
+            "num_remove_start_state_segments": num_remove_start_state_segments,
+            "num_remove_end_state_segments": num_remove_end_state_segments,
         }
 
         sim_config_params = DEF_SIM_CONFIG_PARAMS | {
@@ -451,9 +472,23 @@ if __name__ == "__main__":
                 else ""
             )
             seed_str = f"seed_{random_seed}"
+            num_remove_start_state_segments_str = (
+                f"_num_remove_start_state_segments{num_remove_start_state_segments}"
+                if not num_remove_start_state_segments == 0
+                else ""
+            )
+            num_remove_end_state_segments_str = (
+                f"_num_remove_end_state_segments{num_remove_end_state_segments}"
+                if not num_remove_end_state_segments == 0
+                else ""
+            )
             logdir_prefix = (
-                f"PPO_{env_class_str}{warm_up_str}{start_policy_after_warm_up_str}_{lane_str}_{av_percent_str}"
-                + f"{num_control_seg_str}{per_lane_str}{right_lane_str}{merge_flow_percent_str}_{seed_str}_{timestr}"
+                f"PPO_{env_class_str}"
+                + f"{warm_up_str}{start_policy_after_warm_up_str}"
+                + f"{num_remove_start_state_segments_str}{num_remove_end_state_segments_str}"
+                + f"_{lane_str}_{av_percent_str}"
+                + f"{num_control_seg_str}{per_lane_str}{right_lane_str}{merge_flow_percent_str}"
+                + f"_{seed_str}_{timestr}"
             )
             if not os.path.exists(results_dir):
                 os.makedirs(results_dir, exist_ok=True)

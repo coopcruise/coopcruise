@@ -72,6 +72,15 @@ class SumoEnvCentralizedBase(SumoEnv):
             if config.get("highway_state_edges") is not None
             else self.highway_sorted_road_edges
         )
+
+        self.num_remove_start_state_segments = (
+            config.get("num_remove_start_state_segments") or 0
+        )
+
+        self.num_remove_end_state_segments = (
+            config.get("num_remove_end_state_segments") or 0
+        )
+
         self.highway_state_segments = (
             config.get(
                 "highway_state_segments",
@@ -86,6 +95,12 @@ class SumoEnvCentralizedBase(SumoEnv):
                 if data["end"]["edge"] in self.highway_state_edges
             ]
         )
+        self.highway_state_segments = self.highway_state_segments[
+            self.num_remove_start_state_segments : (
+                len(self.highway_state_segments) - self.num_remove_end_state_segments
+            )
+        ]
+
         self.num_highway_state_segments = len(self.highway_state_segments)
         self.highway_state_segment_idx = [
             list(self.segment_data.keys()).index(segment)
