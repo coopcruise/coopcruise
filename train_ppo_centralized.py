@@ -176,6 +176,13 @@ def add_parser_simulation_params(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
+        "--warm_up",
+        type=int,
+        default=WARM_UP_TIME,
+        help="Time duration (sec) before merge inflow begins",
+    )
+
+    parser.add_argument(
         "--merge_flow_percent",
         type=int,
         default=MERGE_FLOW_PERCENT,
@@ -287,6 +294,7 @@ if __name__ == "__main__":
         random_seed = args.random_seed
         results_dir = args.results_dir
         env_class_str = args.env_class
+        warm_up_time = args.warm_up
 
         env_class = get_env_class_from_str(env_class_str)
 
@@ -301,6 +309,7 @@ if __name__ == "__main__":
             "av_percent": av_percent,
             "merge_flow_percent": merge_flow_percent,
             "random_av_switching_seed": random_av_switching_seed,
+            "warm_up_time": warm_up_time,
         }
 
         if NETWORK_FILE_NAME is not None:
@@ -417,6 +426,7 @@ if __name__ == "__main__":
             timestr = datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
             lane_str = "single_lane" if single_lane else "multi_lane"
             av_percent_str = f"av_{av_percent}"
+            warm_up_str = f"_warm_up_{warm_up_time}"
             merge_flow_percent_str = (
                 f"_merge_flow_percent_{merge_flow_percent}"
                 if not merge_flow_percent == MERGE_FLOW_PERCENT
@@ -430,7 +440,7 @@ if __name__ == "__main__":
                 else ""
             )
             seed_str = f"seed_{random_seed}"
-            logdir_prefix = f"PPO_{env_class_str}_{lane_str}_{av_percent_str}{num_control_seg_str}{per_lane_str}{right_lane_str}{merge_flow_percent_str}_{seed_str}_{timestr}"
+            logdir_prefix = f"PPO_{env_class_str}{warm_up_str}_{lane_str}_{av_percent_str}{num_control_seg_str}{per_lane_str}{right_lane_str}{merge_flow_percent_str}_{seed_str}_{timestr}"
             if not os.path.exists(results_dir):
                 os.makedirs(results_dir, exist_ok=True)
             logdir = tempfile.mkdtemp(prefix=logdir_prefix, dir=results_dir)
