@@ -473,12 +473,12 @@ if __name__ == "__main__":
             )
             seed_str = f"seed_{random_seed}"
             num_remove_start_state_segments_str = (
-                f"_num_remove_start_state_segments{num_remove_start_state_segments}"
+                f"_num_remove_start_state_segments_{num_remove_start_state_segments}"
                 if not num_remove_start_state_segments == 0
                 else ""
             )
             num_remove_end_state_segments_str = (
-                f"_num_remove_end_state_segments{num_remove_end_state_segments}"
+                f"_num_remove_end_state_segments_{num_remove_end_state_segments}"
                 if not num_remove_end_state_segments == 0
                 else ""
             )
