@@ -347,6 +347,7 @@ class SumoEnv(MultiAgentEnv):
             ]
         )
 
+        self.hide_libsumo_progress_bar = config.get("hide_libsumo_progress_bar") or False
         # self.segment_num_veh = None
         # self.segment_density = None
 
@@ -498,7 +499,8 @@ class SumoEnv(MultiAgentEnv):
 
             traci.start(self.sumo_start_cmd)
             self.traci_conn = traci
-            self.progress_bar = tqdm(desc="SUMO episode", total=self.num_steps)
+            if not self.hide_libsumo_progress_bar:
+                self.progress_bar = tqdm(desc="SUMO episode", total=self.num_steps)
         else:
             import traci
 

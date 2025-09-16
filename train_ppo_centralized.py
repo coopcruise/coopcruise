@@ -101,7 +101,7 @@ NUM_REMOVE_END_STATE_SEGMENTS = 0
 
 START_POLICY_AFTER_WARM_UP = False
 
-ENV_CONFIG_OVERRIDES = {"flat_obs_space": True}
+ENV_CONFIG_OVERRIDES = {"flat_obs_space": True, "hide_libsumo_progress_bar": True}
 CUSTOM_NAME_POSTFIX = None
 
 DEFAULT_RESULTS_DIR = _get_defaults_results_dir()
@@ -526,7 +526,7 @@ if __name__ == "__main__":
                 "An Algorithm checkpoint has been created inside directory: "
                 f"'{path_to_checkpoint}'."
             )
-        gc.collect()
+        # gc.collect()
     # If evaluation_duration_unit is "episodes", the algorithm runs
     # evaluation_duration episodes with rollout_fragment_length steps. If
     # count_steps_by is "env_steps", counts each environment step as a single
