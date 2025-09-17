@@ -270,6 +270,8 @@ def extract_sim_logs(
     segment_density = {}
 
     segment_speed_limit = {}
+    segment_time_headway = {}
+    segment_min_gap = {}
     veh_travel_info = {}
 
     edge_veh_count_file = "segment_counter.csv"
@@ -283,6 +285,8 @@ def extract_sim_logs(
     segment_density_file = "segment_density.csv"
 
     segment_speed_limit_file = "segment_speed_limit.csv"
+    segment_time_headway_file = "segment_time_headway.csv"
+    segment_min_gap_file = "segment_min_gap.csv"
     veh_travel_info_file = "veh_travel_info.csv"
 
     for sim_name in sim_group_dirs.keys():
@@ -326,9 +330,20 @@ def extract_sim_logs(
                 results_dir, segment_density_file, steps_per_second
             )
 
-            segment_speed_limit[sim_name] = read_sim_data_file(
-                results_dir, segment_speed_limit_file, steps_per_second
-            )
+            if (Path(results_dir) / segment_speed_limit_file).exists():
+                segment_speed_limit[sim_name] = read_sim_data_file(
+                    results_dir, segment_speed_limit_file, steps_per_second
+                )
+
+            if (Path(results_dir) / segment_time_headway_file).exists():
+                segment_time_headway[sim_name] = read_sim_data_file(
+                    results_dir, segment_time_headway_file, steps_per_second
+                )
+
+            if (Path(results_dir) / segment_min_gap_file).exists():
+                segment_min_gap[sim_name] = read_sim_data_file(
+                    results_dir, segment_min_gap_file, steps_per_second
+                )
 
         if (Path(results_dir) / veh_travel_info_file).exists():
             veh_travel_info[sim_name] = pd.read_csv(
@@ -345,6 +360,8 @@ def extract_sim_logs(
         "segment_num_veh": segment_num_veh,
         "segment_density": segment_density,
         "segment_speed_limit": segment_speed_limit,
+        "segment_time_headway": segment_time_headway,
+        "segment_min_gap": segment_min_gap,
         "veh_travel_info": veh_travel_info,
     }
 
@@ -503,7 +520,7 @@ def analyze_sim_group(
 
     detector_section_len = {
         sim_name: get_detector_section_lengths(
-            sim_logs["speed_profile_detector_file_path"][sim_name],
+            speed_profile_detector_file_path[sim_name],
             sim_network_path,
             main_road_west_segments[sim_name],
         )
@@ -533,6 +550,8 @@ def analyze_sim_group(
         throughput_computation_period_time,
     )
 
+    sim_group_str = f"{sim_group_name}_" if sim_group_name else ""
+
     fig_throughput_diagram = plot_time_space_diagrams(
         # data=segment_throughput,
         data={
@@ -552,7 +571,7 @@ def analyze_sim_group(
     Path(save_dir).mkdir(exist_ok=True)
     for format in FIG_SAVE_FORMATS:
         fig_throughput_diagram.savefig(
-            Path(save_dir) / f"{sim_group_name}_throughput_diagrams.{format}"
+            Path(save_dir) / f"{sim_group_str}throughput_diagrams.{format}"
         )
 
     fig_inflow, fig_outflow = plot_inflow_outflow(
@@ -563,8 +582,8 @@ def analyze_sim_group(
     )
 
     for format in FIG_SAVE_FORMATS:
-        fig_inflow.savefig(Path(save_dir) / f"{sim_group_name}_inflow.{format}")
-        fig_outflow.savefig(Path(save_dir) / f"{sim_group_name}_outflow.{format}")
+        fig_inflow.savefig(Path(save_dir) / f"{sim_group_str}inflow.{format}")
+        fig_outflow.savefig(Path(save_dir) / f"{sim_group_str}outflow.{format}")
 
     fig_segment_avg_speed = plot_time_space_diagrams(
         # data=segment_avg_speed,
@@ -585,8 +604,78 @@ def analyze_sim_group(
 
     for format in FIG_SAVE_FORMATS:
         fig_segment_avg_speed.savefig(
-            Path(save_dir) / f"{sim_group_name}_avg_speed_diagrams.{format}"
+            Path(save_dir) / f"{sim_group_str}avg_speed_diagrams.{format}"
         )
+
+    if len(sim_logs["segment_speed_limit"]) > 0:
+        fig_segment_speed_limit = plot_time_space_diagrams(
+            data={
+                sim_name: sim_speed_limit.loc[:, ordered_available_segments[:-1]]
+                for sim_name, sim_speed_limit in sim_logs["segment_speed_limit"].items()
+            },
+            sections=list(detector_section_len.values())[0].keys(),
+            sims_steps_per_second=sims_steps_per_second,
+            section_lengths=detector_section_len,
+            data_name="speed limit [m/s]",
+            min_val=0,
+            title="Speed Limit Action",
+            max_subplot_title_len=25,
+            max_color_bar_title_len=15,
+            # num_rows=1,
+        )
+
+        for format in FIG_SAVE_FORMATS:
+            fig_segment_speed_limit.savefig(
+                Path(save_dir) / f"{sim_group_str}speed_limit_diagrams.{format}"
+            )
+
+    if len(sim_logs["segment_time_headway"]) > 0:
+        fig_segment_time_headway = plot_time_space_diagrams(
+            data={
+                sim_name: sim_time_headway.loc[:, ordered_available_segments[:-1]]
+                for sim_name, sim_time_headway in sim_logs["segment_time_headway"].items()
+            },
+            sections=list(detector_section_len.values())[0].keys(),
+            sims_steps_per_second=sims_steps_per_second,
+            section_lengths=detector_section_len,
+            data_name="time headway [s]",
+            min_val=1.5,
+            max_val=6,
+            title="Time Headway Action",
+            max_subplot_title_len=25,
+            max_color_bar_title_len=15,
+            cmap="RdYlGn_r",
+            # num_rows=1,
+        )
+
+        for format in FIG_SAVE_FORMATS:
+            fig_segment_time_headway.savefig(
+                Path(save_dir) / f"{sim_group_str}time_headway_diagrams.{format}"
+            )
+
+    if len(sim_logs["segment_min_gap"]) > 0:
+        fig_segment_min_gap = plot_time_space_diagrams(
+            data={
+                sim_name: sim_min_gap.loc[:, ordered_available_segments[:-1]]
+                for sim_name, sim_min_gap in sim_logs["segment_min_gap"].items()
+            },
+            sections=list(detector_section_len.values())[0].keys(),
+            sims_steps_per_second=sims_steps_per_second,
+            section_lengths=detector_section_len,
+            data_name="min. gap [m]",
+            min_val=2.5,
+            max_val=30,
+            title="Minimum Gap Action",
+            max_subplot_title_len=25,
+            max_color_bar_title_len=15,
+            cmap="RdYlGn_r",
+            # num_rows=1,
+        )
+
+        for format in FIG_SAVE_FORMATS:
+            fig_segment_min_gap.savefig(
+                Path(save_dir) / f"{sim_group_str}min_gap_diagrams.{format}"
+            )
 
 
 def plot_mixed_stat_results(
