@@ -24,6 +24,7 @@ from train_ppo_centralized import (
 )
 
 # from train_ppo_centralized import create_parser
+from utils.analysis_utils import analyze_sim_group
 from utils.sumo_utils import extract_vehicle_ids_from_routes
 from utils.sim_utils import DEF_SUMO_CONFIG, get_centralized_env_config
 
@@ -461,6 +462,11 @@ def simulate(
         json.dump(episode_results, fp)
 
     env.log_episode()
+
+    analyze_sim_group(
+        sim_group_dirs={"": env.episode_results_dir}, save_dir=env.episode_results_dir
+    )
+
     env.close()
 
 
