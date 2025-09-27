@@ -686,6 +686,8 @@ def analyze_sim_group(
                 Path(save_dir) / f"{sim_group_str}min_gap_diagrams.{format}"
             )
 
+        plt.close("all")
+
 
 def plot_mixed_stat_results(
     mixed_stats: dict,
