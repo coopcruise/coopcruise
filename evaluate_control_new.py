@@ -1,5 +1,6 @@
 import json
 import argparse
+import os
 
 # import time
 import numpy as np
@@ -25,7 +26,7 @@ from train_ppo_centralized import (
 
 # from train_ppo_centralized import create_parser
 from utils.analysis_utils import analyze_sim_group
-from utils.sumo_utils import extract_vehicle_ids_from_routes
+from utils.sumo_utils import extract_vehicle_ids_from_routes, get_episode_results_dir
 from utils.sim_utils import DEF_SUMO_CONFIG, get_centralized_env_config
 
 NUM_ROLLOUT_WORKERS = 10
@@ -291,19 +292,36 @@ def simulate(
 
     env_class_obj = get_env_class_from_str(sim_config_params["env_class"])
 
+    # full_state_segments = [
+    #     segment
+    #     for segment, data in env.segment_data.items()
+    #     if data["end"]["edge"] in env.highway_state_edges
+    # ]
+    # print(f"{full_state_segments = }")
+    # print(f"{env.highway_state_segments = }")
+    episode_results_dir = get_episode_results_dir(
+        env_config.get("results_dir", env_class_obj.DEF_RESULTS_DIR),
+        env_config["sumo_config"].sumo_config_file,
+        env_config["sumo_config"].scenario_dir,
+        env_config["random_av_switching"],
+        env_config["av_percent"],
+        env_config["name_postfix"],
+    )
+    if Path(episode_results_dir).exists() and sim_config_params["no_rerun_existing"]:
+        directory_entries = os.listdir(episode_results_dir)
+        if len(directory_entries) > 1:
+            # More than just the metadata file exists in the folder
+            print(
+                f"results directory {episode_results_dir} already exists. "
+                "To rerun existing simulations, specify no_rerun_existing=False"
+            )
+            return
+
+    # print(f"[{worker_index}] creating env...")
     env = env_class_obj(env_config)
-
-    if (
-        Path(env.episode_results_dir).exists()
-        and sim_config_params["no_rerun_existing"]
-    ):
-        env.close()
-        print(
-            f"results directory {env.episode_results_dir} already exists. "
-            "To rerun existing simulations, specify no_rerun_existing=False"
-        )
-        return
-
+    # print(f"[{worker_index}] created env...")
+    # print(f"{env.observation_space = }")
+    # print(f"{env.action_space = }")
     # RL control
     policy = None
     if use_learned_control:
