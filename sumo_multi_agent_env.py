@@ -41,6 +41,7 @@ from utils.sumo_utils import (
     extract_vehicle_departure_time_from_routes,
     get_route_file_path,
     extract_num_veh_per_type_from_route,
+    get_episode_results_dir,
 )
 
 from utils.global_utils import (
@@ -347,7 +348,9 @@ class SumoEnv(MultiAgentEnv):
             ]
         )
 
-        self.hide_libsumo_progress_bar = config.get("hide_libsumo_progress_bar") or False
+        self.hide_libsumo_progress_bar = (
+            config.get("hide_libsumo_progress_bar") or False
+        )
         # self.segment_num_veh = None
         # self.segment_density = None
 
@@ -991,18 +994,26 @@ class SumoEnv(MultiAgentEnv):
             self._subscribe_for_metrics()
 
     def _get_episode_results_dir(self, name_postfix: str = None):
-        dir_name = f"{os.path.splitext(os.path.basename(self.sumo_config.sumo_config_file))[0]}"
-
-        if self.random_av_switching and self.av_percent > 0:
-            dir_name += f"_random_switch_av_percent_{self.av_percent}"
-
-        if name_postfix is not None:
-            dir_name += f"_{name_postfix}"
-
-        episode_results_dir = (
-            Path(self.results_dir) / Path(self.sumo_config.scenario_dir).name / dir_name
+        return get_episode_results_dir(
+            self.results_dir,
+            self.sumo_config.sumo_config_file,
+            self.sumo_config.scenario_dir,
+            self.random_av_switching,
+            self.av_percent,
+            name_postfix,
         )
-        return episode_results_dir
+        # dir_name = f"{os.path.splitext(os.path.basename(self.sumo_config.sumo_config_file))[0]}"
+
+        # if self.random_av_switching and self.av_percent > 0:
+        #     dir_name += f"_random_switch_av_percent_{self.av_percent}"
+
+        # if name_postfix is not None:
+        #     dir_name += f"_{name_postfix}"
+
+        # episode_results_dir = (
+        #     Path(self.results_dir) / Path(self.sumo_config.scenario_dir).name / dir_name
+        # )
+        # return episode_results_dir
 
     def _create_results_dir(self):
         self.episode_results_dir.mkdir(exist_ok=True, parents=True)

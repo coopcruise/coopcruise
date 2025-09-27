@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -786,3 +787,23 @@ def extract_veh_types_from_route(route_path: Path | str):
         vehicle_types.add(veh_type_id)
 
     return vehicle_types
+
+
+def get_episode_results_dir(
+    results_dir,
+    sumo_config_file,
+    scenario_dir,
+    random_av_switching,
+    av_percent,
+    name_postfix: str = None,
+):
+    dir_name = f"{os.path.splitext(os.path.basename(sumo_config_file))[0]}"
+
+    if random_av_switching and av_percent > 0:
+        dir_name += f"_random_switch_av_percent_{av_percent}"
+
+    if name_postfix is not None:
+        dir_name += f"_{name_postfix}"
+
+    episode_results_dir = Path(results_dir) / Path(scenario_dir).name / dir_name
+    return episode_results_dir
