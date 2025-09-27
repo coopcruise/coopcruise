@@ -90,6 +90,13 @@ def add_parser_args(parser: argparse.ArgumentParser):
         action="store_true",
         help="Whether to run debug mode with human only. In debug mode, SUMO GUI is shown and only a single task is performed",
     )
+
+    parser.add_argument(
+        "--auto_results_dir",
+        default=False,
+        action="store_true",
+        help="Whether to use an automatic results directory name based on checkpoint parameters. This will disregard results_dir",
+    )
     return parser
 
 
@@ -122,8 +129,6 @@ if __name__ == "__main__":
     use_tau_control = False  # [False, True]
     tau_control_only_rightmost_lane = False
     automatic_tau_duration = True
-
-    scenario_dir = Path("scenarios/single_junction") / args.results_dir
 
     assert alg_checkpoint_path is not None, "please provide algorithm checkpoint path"
     assert os.path.exists(alg_checkpoint_path), (
@@ -175,6 +180,21 @@ if __name__ == "__main__":
     network_file_name = (
         "short_merge_lane_separate_exit_lane_disconnected_merge_lane.net.xml"
     )
+
+    results_dir_name = args.results_dir
+    if args.auto_results_dir:
+        lane_type_str = "_single_lane" if single_lane else "_multi_lane"
+        control_type_str = (
+            "_right_lane_control"
+            if right_lane_control
+            else ("_per_lane_control" if rl_per_lane_control else "")
+        )
+        merge_inflow_str = f"_merge_flow_percent_{merge_flow_percent}"
+        results_dir_name = (
+            f"{env_class}{control_type_str}{merge_inflow_str}{lane_type_str}"
+        )
+
+    scenario_dir = Path("scenarios/single_junction") / results_dir_name
 
     sumo_config_params = DEF_SUMO_CONFIG_PARAMS | {
         "scenario_dir": scenario_dir,
