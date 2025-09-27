@@ -1,6 +1,6 @@
 from datetime import datetime
 from functools import partial
-import gc
+# import gc
 import os
 import argparse
 import tempfile
