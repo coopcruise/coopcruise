@@ -244,13 +244,16 @@ def extract_steps_per_second(metadata: dict):
 
 def read_sim_data_file(sim_results_dir, data_file, steps_per_second):
     if (Path(sim_results_dir) / data_file).exists():
-        sim_data = pd.read_csv(Path(sim_results_dir) / data_file, index_col=0)
-        time_axis = (
-            sim_data.index / steps_per_second
-            if sim_data.index[-1] != (len(sim_data.index) - 1) / steps_per_second
-            else sim_data.index
-        )
-        return sim_data.set_axis(time_axis)
+        try:
+            sim_data = pd.read_csv(Path(sim_results_dir) / data_file, index_col=0)
+            time_axis = (
+                sim_data.index / steps_per_second
+                if sim_data.index[-1] != (len(sim_data.index) - 1) / steps_per_second
+                else sim_data.index
+            )
+            return sim_data.set_axis(time_axis)
+        except Exception as e:
+            print(f"Problem in file: {Path(sim_results_dir) / data_file}. Exception: {e}")
     return None
 
 
@@ -291,6 +294,10 @@ def extract_sim_logs(
 
     for sim_name in sim_group_dirs.keys():
         results_dir = sim_group_dirs[sim_name]
+        if sim_name not in sim_group_steps_per_second:
+            print(sim_group_steps_per_second.keys())
+            print(f"{results_dir = }")
+            print(f"{Path(results_dir).exists() = }")
         steps_per_second = sim_group_steps_per_second[sim_name]
 
         if not extract_only_veh_travel_info:
