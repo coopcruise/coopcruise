@@ -633,7 +633,9 @@ def analyze_sim_group(
         fig_segment_time_headway = plot_time_space_diagrams(
             data={
                 sim_name: sim_time_headway.loc[:, ordered_available_segments[:-1]]
-                for sim_name, sim_time_headway in sim_logs["segment_time_headway"].items()
+                for sim_name, sim_time_headway in sim_logs[
+                    "segment_time_headway"
+                ].items()
             },
             sections=list(detector_section_len.values())[0].keys(),
             sims_steps_per_second=sims_steps_per_second,
