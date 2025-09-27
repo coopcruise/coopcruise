@@ -1,3 +1,4 @@
+import gc
 import json
 import argparse
 import os
@@ -475,16 +476,43 @@ def simulate(
             num_veh_lost_per_merge_veh=num_veh_lost_per_merge_veh,
         )
 
-    print(episode_results)
+    # print(episode_results)
 
-    with open(Path(env.episode_results_dir) / "episode_result.json", "w") as fp:
-        json.dump(episode_results, fp)
+    try:
+        # print(f"[{os.getpid()}] writing episode_result.json", flush=True)
+        with open(Path(env.episode_results_dir) / "episode_result.json", "w") as fp:
+            json.dump(episode_results, fp)
+        # print(f"[{os.getpid()}] wrote episode_result.json", flush=True)
+    except Exception as e:
+        print(f"[{os.getpid()}] json dump raised: {e}", flush=True)
 
-    env.log_episode()
+    try:
+        # print(f"[{os.getpid()}] calling env.log_episode()", flush=True)
+        env.log_episode()
+        # print(f"[{os.getpid()}] env.log_episode() returned", flush=True)
+    except Exception as e:
+        print(f"[{os.getpid()}] env.log_episode() raised: {e}", flush=True)
 
-    analyze_sim_group(
-        sim_group_dirs={"": env.episode_results_dir}, save_dir=env.episode_results_dir
-    )
+    try:
+        # print(f"[{os.getpid()}] calling analyze_sim_group()", flush=True)
+        analyze_sim_group(
+            sim_group_dirs={"": env.episode_results_dir},
+            save_dir=env.episode_results_dir,
+        )
+        # print(f"[{os.getpid()}] analyze_sim_group() returned", flush=True)
+    except Exception as e:
+        print(f"[{os.getpid()}] analyze_sim_group() raised: {e}", flush=True)
+
+    try:
+        # print(f"[{os.getpid()}] calling env.close()", flush=True)
+        env.close()
+        # print(f"[{os.getpid()}] env.close() returned, deleting env...", flush=True)
+        del env
+        # print(f"[{os.getpid()}] env deleted, collecting garbage...", flush=True)
+        gc.collect()
+    except Exception as e:
+        print(f"[{os.getpid()}] env.close() raised: {e}", flush=True)
+
 
 def do_job(
     tasks_to_accomplish: queue.Queue,
