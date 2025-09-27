@@ -776,15 +776,26 @@ def compute_sim_travel_metrics(sim_logs):
         # (
         #     veh_travel_data_df["total_time"].iloc[:, 1:]
         #     - veh_travel_data_df["total_time"].iloc[:, 0].values
-        # )
+        # ).
+        columns = veh_travel_data_df[sim_group_name]["total_time"].columns
+        no_merge_param_idx = [
+            idx for idx, param in enumerate(columns[0][0]) if param == "no_merge"
+        ][0]
+        no_merge_column_name = [
+            column for column in columns if column[1][no_merge_param_idx]
+        ][0]
+        no_merge_column = columns == no_merge_column_name
+        merge_columns = columns != no_merge_column_name
         time_delay_per_vehicle[sim_group_name] = (
-            veh_travel_data_df[sim_group_name]["total_time"].iloc[:, 1:].T
-            - veh_travel_data_df[sim_group_name]["total_time"].iloc[:, 0]
+            veh_travel_data_df[sim_group_name]["total_time"].loc[:, merge_columns].T
+            - veh_travel_data_df[sim_group_name]["total_time"]
+            .loc[:, no_merge_column]
+            .iloc[:, 0]
         ).T
 
         time_delay_per_second_per_vehicle[sim_group_name] = (
             time_delay_per_vehicle[sim_group_name]
-            / veh_travel_data_df[sim_group_name]["total_time"].iloc[:, 1:]
+            / veh_travel_data_df[sim_group_name]["total_time"].loc[:, merge_columns]
         )
         avg_vel_per_vehicle[sim_group_name] = (
             veh_travel_data_df[sim_group_name]["travel_distance"]
@@ -792,26 +803,36 @@ def compute_sim_travel_metrics(sim_logs):
         )
         avg_vel_reduction_per_vehicle[sim_group_name] = (
             (
-                avg_vel_per_vehicle[sim_group_name].iloc[:, 1:].T
-                - avg_vel_per_vehicle[sim_group_name].iloc[:, 0]
+                avg_vel_per_vehicle[sim_group_name].loc[:, merge_columns].T
+                - avg_vel_per_vehicle[sim_group_name].loc[:, no_merge_column].iloc[:, 0]
             )
-            / avg_vel_per_vehicle[sim_group_name].iloc[:, 0]
+            / avg_vel_per_vehicle[sim_group_name].loc[:, no_merge_column].iloc[:, 0]
         ).T
 
+        # Assumes parameters are no_merge and different control methods.
+        # Human only is with merge and without any control active
+        human_only_column_name = [column for column in columns if not any(column[1])][0]
+        human_only_column = columns == human_only_column_name
         valid_veh[sim_group_name] = (
-            veh_travel_data_df[sim_group_name]["travel_distance"].iloc[:, 1] > 100
+            veh_travel_data_df[sim_group_name]["travel_distance"]
+            .loc[:, human_only_column]
+            .iloc[:, 0]
+            > 100
         )
         avg_vel_reduction_per_vehicle_ref[sim_group_name] = (
             (
                 (
-                    avg_vel_per_vehicle[sim_group_name].iloc[:, 1:].T
-                    - avg_vel_per_vehicle[sim_group_name].iloc[:, 1]
+                    avg_vel_per_vehicle[sim_group_name].loc[:, merge_columns].T
+                    - avg_vel_per_vehicle[sim_group_name]
+                    .loc[:, human_only_column]
+                    .iloc[:, 0]
                 ).T
             )
             .where(valid_veh[sim_group_name])
             .T
             / avg_vel_per_vehicle[sim_group_name]
-            .iloc[:, 1]
+            .loc[:, human_only_column]
+            .iloc[:, 0]
             .where(valid_veh[sim_group_name])
         ).T
 
