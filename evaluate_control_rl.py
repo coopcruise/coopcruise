@@ -6,17 +6,14 @@ import numpy as np
 from pathlib import Path
 
 # import multiprocessing
-from multiprocessing import Process, Queue
 from ray.rllib.algorithms.algorithm import Algorithm, get_checkpoint_info
 from sumo_multi_agent_env import SumoConfig
 
 from evaluate_control_new import (
-    get_sim_configs,
-    add_sims_to_queue,
-    do_job,
     create_eval_parser,
     SUMO_SEED,
     PER_LANE_CONTROL,
+    run_all_simulations,
 )
 from train_ppo_centralized import (
     DEF_SIM_CONFIG_PARAMS,
@@ -262,21 +259,4 @@ if __name__ == "__main__":
         )
         env_config_overrides |= DEBUG_ENV_CONFIG_OVERRIDES
 
-    sim_queue = Queue()
-    sim_configs = get_sim_configs(sumo_config_params, sim_config_params)
-    add_sims_to_queue(sim_queue, sim_configs)
-    # creating processes
-    if num_processes > 0:
-        processes: list[Process] = []
-        for w in range(num_processes):
-            p = Process(target=do_job, args=[sim_queue, w])
-            processes.append(p)
-            p.start()
-
-        # completing process
-        for p in processes:
-            p.join()
-
-    else:
-        print(f"{len(sim_queue._buffer) = }")
-        do_job(sim_queue)
+    run_all_simulations(sumo_config_params, sim_config_params, num_processes)
