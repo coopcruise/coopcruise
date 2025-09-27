@@ -7,8 +7,9 @@ import numpy as np
 
 from pathlib import Path
 
-# import multiprocessing
-from multiprocessing import Process, Queue
+import multiprocessing
+
+# from multiprocessing import Process, Queue
 import queue  # imported for using queue.Empty exception
 from ray.rllib.policy.policy import Policy
 from ray.rllib.utils.spaces.space_utils import unsquash_action
@@ -171,7 +172,7 @@ def add_sim_configs(
                 )
 
 
-def add_sims_to_queue(sim_queue: Queue, sim_configs: list):
+def add_sims_to_queue(sim_queue: queue.Queue, sim_configs: list):
     for sim_config in sim_configs:
         sim_queue.put(sim_config)
 
@@ -485,10 +486,10 @@ def simulate(
         sim_group_dirs={"": env.episode_results_dir}, save_dir=env.episode_results_dir
     )
 
-    env.close()
-
-
-def do_job(tasks_to_accomplish: Queue, worker_index: int | None = None):
+def do_job(
+    tasks_to_accomplish: queue.Queue,
+    worker_index: int | None = None,
+):
     while True:
         try:
             """
@@ -504,7 +505,31 @@ def do_job(tasks_to_accomplish: Queue, worker_index: int | None = None):
     return True
 
 
-if __name__ == "__main__":
+def run_all_simulations(
+    sumo_config_params, sim_config_params, num_processes=NUM_ROLLOUT_WORKERS
+):
+    sim_configs = get_sim_configs(sumo_config_params, sim_config_params)
+    sim_queue = multiprocessing.Queue() if num_processes > 0 else queue.Queue()
+    add_sims_to_queue(sim_queue, sim_configs)
+    # creating processes
+    if num_processes > 0:
+        processes: list[multiprocessing.Process] = []
+        for w in range(num_processes):
+            p = multiprocessing.Process(target=do_job, args=[sim_queue, w])
+            processes.append(p)
+            p.start()
+
+        # completing process
+        for p in processes:
+            p.join()
+
+    else:
+        print(f"{sim_queue.qsize() = }")
+        do_job(sim_queue)
+        # task = sim_queue.get()
+        # simulate(**task)
+
+def main():
     parser = create_eval_parser()
     # Parse the arguments
     args = parser.parse_args()
@@ -623,23 +648,8 @@ if __name__ == "__main__":
         "env_class": env_class,
     }
 
-    sim_queue = Queue()
-    sim_configs = get_sim_configs(sumo_config_params, sim_config_params)
-    add_sims_to_queue(sim_queue, sim_configs)
-    # creating processes
-    if num_processes > 0:
-        processes: list[Process] = []
-        for w in range(num_processes):
-            p = Process(target=do_job, args=[sim_queue, w])
-            processes.append(p)
-            p.start()
+    run_all_simulations(sumo_config_params, sim_config_params, num_processes)
 
-        # completing process
-        for p in processes:
-            p.join()
 
-    else:
-        print(f"{len(sim_queue._buffer) = }")
-        do_job(sim_queue)
-        # task = sim_queue.get()
-        # simulate(**task)
+if __name__ == "__main__":
+    main()
