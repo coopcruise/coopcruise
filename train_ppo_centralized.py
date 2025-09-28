@@ -1,5 +1,6 @@
 from datetime import datetime
 from functools import partial
+
 # import gc
 import os
 import argparse
@@ -100,6 +101,7 @@ NUM_REMOVE_START_STATE_SEGMENTS = 0
 NUM_REMOVE_END_STATE_SEGMENTS = 0
 
 START_POLICY_AFTER_WARM_UP = False
+STOP_POLICY_WHEN_NO_MERGE = False
 
 ENV_CONFIG_OVERRIDES = {"flat_obs_space": True, "hide_libsumo_progress_bar": True}
 CUSTOM_NAME_POSTFIX = None
@@ -250,6 +252,13 @@ def add_parser_simulation_params(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
+        "--stop_policy_when_no_merge",
+        default=STOP_POLICY_WHEN_NO_MERGE,
+        action="store_true",
+        help="Whether to stop sending policy actions when there are no vehicles are on the merge roads.",
+    )
+
+    parser.add_argument(
         "--num_remove_start_state_segments",
         type=int,
         default=NUM_REMOVE_START_STATE_SEGMENTS,
@@ -331,6 +340,7 @@ if __name__ == "__main__":
         num_remove_start_state_segments = args.num_remove_start_state_segments
         num_remove_end_state_segments = args.num_remove_end_state_segments
         num_merge_segments = args.num_merge_segments
+        stop_policy_when_no_merge = args.stop_policy_when_no_merge
 
         env_class = get_env_class_from_str(env_class_str)
 
@@ -357,6 +367,7 @@ if __name__ == "__main__":
             "num_remove_start_state_segments": num_remove_start_state_segments,
             "num_remove_end_state_segments": num_remove_end_state_segments,
             "num_merge_segments": num_merge_segments,
+            "stop_policy_when_no_merge": stop_policy_when_no_merge,
         }
 
         sim_config_params = DEF_SIM_CONFIG_PARAMS | {
@@ -467,7 +478,12 @@ if __name__ == "__main__":
             lane_str = "single_lane" if single_lane else "multi_lane"
             av_percent_str = f"av_{av_percent}"
             warm_up_str = f"_warm_up_{warm_up_time}"
-            start_policy_after_warm_up_str = "_start_after_warn_up"
+            start_policy_after_warm_up_str = (
+                "_start_after_warn_up" if start_policy_after_warm_up else ""
+            )
+            stop_policy_when_no_merge_str = (
+                "_stop_policy_when_no_merge" if stop_policy_when_no_merge else ""
+            )
             merge_flow_percent_str = (
                 f"_merge_flow_percent_{merge_flow_percent}"
                 if not merge_flow_percent == MERGE_FLOW_PERCENT
@@ -498,7 +514,7 @@ if __name__ == "__main__":
             )
             logdir_prefix = (
                 f"PPO_{env_class_str}"
-                + f"{warm_up_str}{start_policy_after_warm_up_str}"
+                + f"{warm_up_str}{start_policy_after_warm_up_str}{stop_policy_when_no_merge_str}"
                 + f"{num_remove_start_state_segments_str}{num_remove_end_state_segments_str}"
                 + f"{num_merge_segments_str}"
                 + f"_{lane_str}_{av_percent_str}"

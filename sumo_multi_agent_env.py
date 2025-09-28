@@ -32,6 +32,7 @@ from utils.sumo_utils import (
     get_junction_ids,
     get_detector_ids,
     edge_distance_from_start,
+    get_veh_type_param,
     object_path_location,
     get_detector_results_files,
     detector_group_mapping,
@@ -187,7 +188,9 @@ class SumoEnv(MultiAgentEnv):
         self.control_veh_type = (
             self.DEF_CONTROL_VEH_TYPE if control_veh_type is None else control_veh_type
         )
-
+        self.default_tau = get_veh_type_param(
+            self.route_path, self.control_veh_type, "tau"
+        )
         self.random_av_switching = (
             config.get("random_av_switching")
             if config.get("random_av_switching") is not None

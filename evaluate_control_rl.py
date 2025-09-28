@@ -26,6 +26,7 @@ from train_ppo_centralized import (
     SINGLE_LANE,
     AV_PERCENT,
     RANDOM_AV_SWITCHING,
+    STOP_POLICY_WHEN_NO_MERGE,
     WARM_UP_TIME,
     NUM_CONTROL_SEGMENTS,
     START_POLICY_AFTER_WARM_UP,
@@ -153,6 +154,9 @@ if __name__ == "__main__":
     start_policy_after_warm_up = (
         env_config.get("start_policy_after_warm_up") or START_POLICY_AFTER_WARM_UP
     )
+    stop_policy_when_no_merge = (
+        env_config.get("stop_policy_when_no_merge") or STOP_POLICY_WHEN_NO_MERGE
+    )
     num_remove_start_state_segments = (
         env_config.get("num_remove_start_state_segments")
         or NUM_REMOVE_START_STATE_SEGMENTS
@@ -233,6 +237,7 @@ if __name__ == "__main__":
         "num_remove_start_state_segments": num_remove_start_state_segments,
         "num_remove_end_state_segments": num_remove_end_state_segments,
         "num_merge_segments": num_merge_segments,
+        "stop_policy_when_no_merge": stop_policy_when_no_merge,
     }
     custom_name_postfix = None
 

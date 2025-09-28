@@ -11,11 +11,7 @@ from utils.global_utils import (
     get_segment_num_vehicles,
     get_segment_veh_ids,
 )
-from utils.sumo_utils import (
-    get_route_file_path,
-    extract_num_departed_veh_from_routes,
-    get_veh_type_param,
-)
+from utils.sumo_utils import get_route_file_path, extract_num_departed_veh_from_routes
 from gymnasium.spaces import flatten_space, flatten
 from matplotlib import colormaps
 
@@ -251,6 +247,9 @@ class SumoEnvCentralizedBase(SumoEnv):
                     for segment in self.merge_segment_data.values()
                 ]
             )
+        self.stop_policy_when_no_merge = (
+            config.get("stop_policy_when_no_merge") or False
+        )
         # TODO: Add merge locations along road.
 
         self.include_tse_pos_in_obs = (
@@ -537,6 +536,23 @@ class SumoEnvCentralizedBase(SumoEnv):
             self.step_count
             >= (self.num_warm_up_steps * self.start_policy_after_warm_up)
         )
+        # Check if there are any vehicles in one of the merge edges
+        any_vehicles_in_merge = any(
+            [
+                veh_state[tc.VAR_ROAD_ID] in self.state_merge_edges
+                for veh_state in veh_data.values()
+            ]
+        )
+        if self.stop_policy_when_no_merge:
+            # Use policy only if there are vehicles in one of the merge edges
+
+            # Note that this alone might lead to non-consistent step lengths.
+            # This might introduce a problem when using constant discount factors during RL training
+            should_update_action = should_update_action and any_vehicles_in_merge
+            # Reset actions to default values if no merging vehicles
+            if not any_vehicles_in_merge:
+                self._init_actions()
+
         if (
             truncateds["__all__"]
             or terminateds["__all__"]
@@ -876,9 +892,6 @@ class SumoEnvCentralizedTau(SumoEnvCentralizedBase):
     # @override  # Only from python 3.12
     def _init_actions(self):
         super()._init_actions()
-        self.default_tau = get_veh_type_param(
-            self.route_path, self.control_veh_type, "tau"
-        )
         self._update_required_tau_profile()
 
     def _set_action(self, action):
