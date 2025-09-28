@@ -490,9 +490,9 @@ class SumoEnvCentralizedBase(SumoEnv):
 
     def step(self, action: Dict[str, Any]):
         got_action_from_policy = True
-        self._set_action(action)
         # Progress the simulation until the profile should be updated
         while True:
+            self._set_action(action)
             # Progress one step. Uses internal car following model
             # and progresses a single simulation step, returning speed profile
             # observations.
@@ -552,7 +552,6 @@ class SumoEnvCentralizedBase(SumoEnv):
                 # Reset actions to default values if no merging vehicles
                 if not any_vehicles_in_merge and got_action_from_policy:
                     self._init_actions()
-                    self._set_action({})
                     got_action_from_policy = False
 
             if (
