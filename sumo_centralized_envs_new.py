@@ -389,10 +389,6 @@ class SumoEnvCentralizedBase(SumoEnv):
         self.prev_step_veh_ids = set(veh_data.keys())
         return centralized_obs, centralized_info
 
-    def step(self, action: Dict[str, Any]):
-        self._set_action(action)
-        return self._step_after_setting_action()
-
     def _color_lane_change_vehicles(self):
         # coloring vehicles that changed lanes
         av_data = self._get_veh_data(self.control_veh_type)
@@ -492,90 +488,96 @@ class SumoEnvCentralizedBase(SumoEnv):
 
         return av_actions
 
-    def _step_after_setting_action(self):
-        # Progress one step. Uses internal car following model
-        # and progresses a single simulation step, returning speed profile
-        # observations.
-        if self.color_lane_change_vehicles:
-            self._color_lane_change_vehicles()
+    def step(self, action: Dict[str, Any]):
+        got_action_from_policy = True
+        self._set_action(action)
+        # Progress the simulation until the profile should be updated
+        while True:
+            # Progress one step. Uses internal car following model
+            # and progresses a single simulation step, returning speed profile
+            # observations.
+            if self.color_lane_change_vehicles:
+                self._color_lane_change_vehicles()
 
-        obs, rewards, terminateds, truncateds, infos = super().step({})
-        veh_data = self._get_veh_data()
+            obs, rewards, terminateds, truncateds, infos = super().step({})
+            veh_data = self._get_veh_data()
 
-        centralized_rewards = self.get_reward_func(
-            prev_veh_ids=self.prev_step_veh_ids,
-            current_veh_ids=self.current_veh_ids,
-            current_time_step=self.step_count,
-            veh_data=veh_data,
-        )
+            centralized_rewards = self.get_reward_func(
+                prev_veh_ids=self.prev_step_veh_ids,
+                current_veh_ids=self.current_veh_ids,
+                current_time_step=self.step_count,
+                veh_data=veh_data,
+            )
 
-        if self.reward_type in self.CUMULATIVE_REWARDS:
-            self.current_reward[self.CENTRALIZED_AGENT_NAME] += centralized_rewards[
-                self.CENTRALIZED_AGENT_NAME
-            ]
-        else:
-            self.current_reward[self.CENTRALIZED_AGENT_NAME] = centralized_rewards[
-                self.CENTRALIZED_AGENT_NAME
-            ]
+            if self.reward_type in self.CUMULATIVE_REWARDS:
+                self.current_reward[self.CENTRALIZED_AGENT_NAME] += centralized_rewards[
+                    self.CENTRALIZED_AGENT_NAME
+                ]
+            else:
+                self.current_reward[self.CENTRALIZED_AGENT_NAME] = centralized_rewards[
+                    self.CENTRALIZED_AGENT_NAME
+                ]
 
-        self.num_waiting_veh = (
-            self.cum_departures[min(self.step_count, len(self.cum_departures) - 1)]
-            - self.num_completed_veh
-            - len(self.current_veh_ids)
-        )
-        # Return observation either when the episode ends or when the action
-        # should be updated.
-        should_update_action = (
-            (
+            self.num_waiting_veh = (
+                self.cum_departures[min(self.step_count, len(self.cum_departures) - 1)]
+                - self.num_completed_veh
+                - len(self.current_veh_ids)
+            )
+            # Return observation either when the episode ends or when the action
+            # should be updated.
+            should_update_action = (
+                (
+                    self.step_count
+                    - (self.num_warm_up_steps if self.start_policy_after_warm_up else 0)
+                )
+                % self.num_simulation_steps_per_step
+                == 0
+            ) and (
                 self.step_count
-                - (self.num_warm_up_steps if self.start_policy_after_warm_up else 0)
+                >= (self.num_warm_up_steps * self.start_policy_after_warm_up)
             )
-            % self.num_simulation_steps_per_step
-            == 0
-        ) and (
-            self.step_count
-            >= (self.num_warm_up_steps * self.start_policy_after_warm_up)
-        )
-        # Check if there are any vehicles in one of the merge edges
-        any_vehicles_in_merge = any(
-            [
-                veh_state[tc.VAR_ROAD_ID] in self.state_merge_edges
-                for veh_state in veh_data.values()
-            ]
-        )
-        if self.stop_policy_when_no_merge:
-            # Use policy only if there are vehicles in one of the merge edges
-
-            # Note that this alone might lead to non-consistent step lengths.
-            # This might introduce a problem when using constant discount factors during RL training
-            should_update_action = should_update_action and any_vehicles_in_merge
-            # Reset actions to default values if no merging vehicles
-            if not any_vehicles_in_merge:
-                self._init_actions()
-
-        if (
-            truncateds["__all__"]
-            or terminateds["__all__"]
-            # or self.step_count % self.num_simulation_steps_per_step == 0
-            or should_update_action
-        ):
-            centralized_obs = self._get_centralized_obs(veh_data)
-            self._agent_ids = set([self.CENTRALIZED_AGENT_NAME])
-            # print("timestep", self.step_count, "reward", self.current_reward)
-            centralized_terminateds = {"__all__": terminateds["__all__"]}
-            centralized_truncateds = {"__all__": truncateds["__all__"]}
-            reward = self.current_reward.copy()
-            self.current_reward = {self.CENTRALIZED_AGENT_NAME: 0}
-            return (
-                centralized_obs,
-                reward,
-                centralized_terminateds,
-                centralized_truncateds,
-                infos,
+            # Check if there are any vehicles in one of the merge edges
+            any_vehicles_in_merge = any(
+                [
+                    veh_state[tc.VAR_ROAD_ID] in self.state_merge_edges
+                    for veh_state in veh_data.values()
+                ]
             )
+            if self.stop_policy_when_no_merge:
+                # Use policy only if there are vehicles in one of the merge edges
+
+                # Note that this alone might lead to non-consistent step lengths.
+                # This might introduce a problem when using constant discount factors during RL training
+                should_update_action = should_update_action and any_vehicles_in_merge
+                # Reset actions to default values if no merging vehicles
+                if not any_vehicles_in_merge and got_action_from_policy:
+                    self._init_actions()
+                    self._set_action({})
+                    got_action_from_policy = False
+
+            if (
+                truncateds["__all__"]
+                or terminateds["__all__"]
+                # or self.step_count % self.num_simulation_steps_per_step == 0
+                or should_update_action
+            ):
+                centralized_obs = self._get_centralized_obs(veh_data)
+                self._agent_ids = set([self.CENTRALIZED_AGENT_NAME])
+                # print("timestep", self.step_count, "reward", self.current_reward)
+                centralized_terminateds = {"__all__": terminateds["__all__"]}
+                centralized_truncateds = {"__all__": truncateds["__all__"]}
+                reward = self.current_reward.copy()
+                self.current_reward = {self.CENTRALIZED_AGENT_NAME: 0}
+                return (
+                    centralized_obs,
+                    reward,
+                    centralized_terminateds,
+                    centralized_truncateds,
+                    infos,
+                )
 
         # Recursively progress the simulation until the profile should be updated
-        return self.step({})
+        # return self.step({})
 
     def _get_lane_average_per_lane_profile(self, per_lane_profile):
         per_lane_profile = np.asarray(per_lane_profile)
