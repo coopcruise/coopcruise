@@ -18,6 +18,7 @@ from evaluate_control_new import (
 from train_ppo_centralized import (
     DEF_SIM_CONFIG_PARAMS,
     DEF_SUMO_CONFIG_PARAMS,
+    NUM_MERGE_SEGMENTS,
     NUM_REMOVE_END_STATE_SEGMENTS,
     NUM_REMOVE_START_STATE_SEGMENTS,
     NUM_SIMULATION_STEPS_PER_STEP,
@@ -159,7 +160,7 @@ if __name__ == "__main__":
     num_remove_end_state_segments = (
         env_config.get("num_remove_end_state_segments") or NUM_REMOVE_END_STATE_SEGMENTS
     )
-
+    num_merge_segments = env_config.get("num_merge_segments") or NUM_MERGE_SEGMENTS
     sumo_config_file_name: str = env_config["sumo_config"].sumo_config_file
     if "merge_flow_percent" in sumo_config_file_name:
         merge_flow_percent = int(
@@ -231,6 +232,7 @@ if __name__ == "__main__":
         "start_policy_after_warm_up": start_policy_after_warm_up,
         "num_remove_start_state_segments": num_remove_start_state_segments,
         "num_remove_end_state_segments": num_remove_end_state_segments,
+        "num_merge_segments": num_merge_segments,
     }
     custom_name_postfix = None
 

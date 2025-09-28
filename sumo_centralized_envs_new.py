@@ -5,8 +5,12 @@ from pathlib import Path
 from gymnasium import spaces
 import traci.constants as tc
 from sumo_multi_agent_env import SumoEnv
-from utils.sumo_utils import get_edge_length
-from utils.global_utils import get_segment_num_vehicles, get_segment_veh_ids
+from utils.sumo_utils import get_edge_length, get_edge_segment_map
+from utils.global_utils import (
+    get_segment_avg_speed,
+    get_segment_num_vehicles,
+    get_segment_veh_ids,
+)
 from utils.sumo_utils import (
     get_route_file_path,
     extract_num_departed_veh_from_routes,
@@ -214,6 +218,39 @@ class SumoEnvCentralizedBase(SumoEnv):
             self.edge_lengths[merge_id] for merge_id in self.state_merge_edges
         ]
         self.merge_lengths = np.array(self.merge_lengths, dtype=np.float32)
+        # Divide merge roads into segments
+        self.num_merge_segments = config.get("num_merge_segments") or 0
+        self.merge_segment_data = None
+        self.merge_edge_segment_map = None
+        self.merge_segment_lengths = None
+        self.num_merge_segment_lanes = None
+        if self.num_merge_segments > 1:
+            self.merge_segment_data = {}
+            for merge_id in self.state_merge_edges:
+                merge_segment_end_positions = (
+                    np.linspace(0, 1, self.num_merge_segments + 1)[1:]
+                    * self.edge_lengths[merge_id]
+                )
+                self.merge_segment_data |= {
+                    f"{merge_id}_pos_{end_position}": {
+                        "end": {"edge": merge_id, "edge_position": end_position},
+                        "length": (
+                            end_position
+                            - (merge_segment_end_positions[idx - 1] if idx > 0 else 0)
+                        ),
+                    }
+                    for idx, end_position in enumerate(merge_segment_end_positions)
+                }
+            self.merge_edge_segment_map = get_edge_segment_map(self.merge_segment_data)
+            self.merge_segment_lengths = np.array(
+                [segment["length"] for segment in self.merge_segment_data.values()]
+            )
+            self.num_merge_segment_lanes = np.array(
+                [
+                    self.edge_lanes[segment["end"]["edge"]]
+                    for segment in self.merge_segment_data.values()
+                ]
+            )
         # TODO: Add merge locations along road.
 
         self.include_tse_pos_in_obs = (
@@ -234,10 +271,11 @@ class SumoEnvCentralizedBase(SumoEnv):
         )
 
         self.observation_space = self.get_centralized_obs_space(
-            self.num_highway_state_segments,
-            self.num_merge_edges,
-            self.include_tse_pos_in_obs,
-            self.include_av_frac_in_obs,
+            num_highway_state_segments=self.num_highway_state_segments,
+            num_merge_edges=self.num_merge_edges,
+            num_merge_segments=self.num_merge_segments,
+            include_tse_pos_in_obs=self.include_tse_pos_in_obs,
+            include_av_frac_in_obs=self.include_av_frac_in_obs,
         )
 
         if self.flat_obs_space:
@@ -270,6 +308,7 @@ class SumoEnvCentralizedBase(SumoEnv):
     def get_centralized_obs_space(
         num_highway_state_segments,
         num_merge_edges=0,
+        num_merge_segments=0,
         include_tse_pos_in_obs=True,
         include_av_frac_in_obs=True,
     ):
@@ -312,18 +351,19 @@ class SumoEnvCentralizedBase(SumoEnv):
             )
 
         if num_merge_edges > 0:
+            num_merge_state_vars = num_merge_edges * max(num_merge_segments, 1)
             obs_space.update(
                 {
                     "tse_merge_speed": spaces.Box(
                         float(0),
                         float("inf"),
-                        shape=(num_merge_edges,),
+                        shape=(num_merge_state_vars,),
                         dtype=np.float32,
                     ),
                     "tse_merge_density": spaces.Box(
                         float(0),
                         float("inf"),
-                        shape=(num_merge_edges,),
+                        shape=(num_merge_state_vars,),
                         dtype=np.float32,
                     ),
                 }
@@ -626,28 +666,57 @@ class SumoEnvCentralizedBase(SumoEnv):
 
         # TODO: Make this simpler:
         if self.num_merge_edges > 0:
-            num_merge_vehicles = np.zeros(self.num_merge_edges, dtype=np.float32)
-            merge_speed = {merge_id: [] for merge_id in self.state_merge_edges}
-            for vehicle_params in veh_data.values():
-                edge = vehicle_params[tc.VAR_ROAD_ID]
-                if edge in self.state_merge_edges:
-                    merge_idx = self.state_merge_edges.index(edge)
-                    num_merge_vehicles[merge_idx] += 1
-                    merge_speed[edge].append(vehicle_params[tc.VAR_SPEED])
-            merge_avg_speed = np.array(
-                [
-                    np.average(speeds)
-                    if len(speeds) > 0
-                    else self.edge_max_speed[merge_id]
-                    for merge_id, speeds in merge_speed.items()
-                ],
-                dtype=np.float32,
-            )
-            merge_density = num_merge_vehicles / self.merge_lengths
+            if self.merge_segment_data is not None:
+                merge_avg_speed = list(
+                    get_segment_avg_speed(
+                        veh_data,
+                        self.merge_edge_segment_map,
+                        self.edge_max_speed,
+                        self.merge_segment_data,
+                    ).values()
+                )
+                num_merge_vehicles = np.array(
+                    list(
+                        get_segment_num_vehicles(
+                            veh_data,
+                            self.merge_edge_segment_map,
+                            self.merge_segment_data,
+                        ).values()
+                    )
+                )
+                merge_density = (
+                    num_merge_vehicles
+                    / self.merge_segment_lengths
+                    / self.num_merge_segment_lanes
+                )
+            else:
+                num_merge_vehicles = np.zeros(self.num_merge_edges, dtype=np.float32)
+                merge_speed = {merge_id: [] for merge_id in self.state_merge_edges}
+                for vehicle_params in veh_data.values():
+                    edge = vehicle_params[tc.VAR_ROAD_ID]
+                    if edge in self.state_merge_edges:
+                        merge_idx = self.state_merge_edges.index(edge)
+                        num_merge_vehicles[merge_idx] += 1
+                        merge_speed[edge].append(vehicle_params[tc.VAR_SPEED])
+                merge_avg_speed = np.array(
+                    [
+                        np.average(speeds)
+                        if len(speeds) > 0
+                        else self.edge_max_speed[merge_id]
+                        for merge_id, speeds in merge_speed.items()
+                    ],
+                    dtype=np.float32,
+                )
+                merge_density = num_merge_vehicles / self.merge_lengths
+
             state[self.CENTRALIZED_AGENT_NAME].update(
                 {
-                    "tse_merge_speed": merge_avg_speed / self.normalization_max_speed,
-                    "tse_merge_density": merge_density / self.normalization_max_density,
+                    "tse_merge_speed": (
+                        np.asarray(merge_avg_speed) / self.normalization_max_speed
+                    ).astype(np.float32),
+                    "tse_merge_density": (
+                        np.asarray(merge_density) / self.normalization_max_density
+                    ).astype(np.float32),
                 }
             )
 

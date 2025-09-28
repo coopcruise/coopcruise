@@ -95,7 +95,7 @@ SCENARIO_PARAMS = {
     "control_end_edge": "992666042",
     "state_merge_edges": ["277208926"],
 }
-
+NUM_MERGE_SEGMENTS = 0
 NUM_REMOVE_START_STATE_SEGMENTS = 0
 NUM_REMOVE_END_STATE_SEGMENTS = 0
 
@@ -262,6 +262,13 @@ def add_parser_simulation_params(parser: argparse.ArgumentParser):
         default=NUM_REMOVE_END_STATE_SEGMENTS,
         help="Number of segments to remove from state, counted from downstream backwards",
     )
+
+    parser.add_argument(
+        "--num_merge_segments",
+        type=int,
+        default=NUM_MERGE_SEGMENTS,
+        help="Number of segments into which to divide merge roads",
+    )
     return parser
 
 
@@ -323,6 +330,7 @@ if __name__ == "__main__":
         start_policy_after_warm_up = args.start_policy_after_warm_up
         num_remove_start_state_segments = args.num_remove_start_state_segments
         num_remove_end_state_segments = args.num_remove_end_state_segments
+        num_merge_segments = args.num_merge_segments
 
         env_class = get_env_class_from_str(env_class_str)
 
@@ -348,6 +356,7 @@ if __name__ == "__main__":
             "start_policy_after_warm_up": start_policy_after_warm_up,
             "num_remove_start_state_segments": num_remove_start_state_segments,
             "num_remove_end_state_segments": num_remove_end_state_segments,
+            "num_merge_segments": num_merge_segments,
         }
 
         sim_config_params = DEF_SIM_CONFIG_PARAMS | {
@@ -482,10 +491,16 @@ if __name__ == "__main__":
                 if not num_remove_end_state_segments == 0
                 else ""
             )
+            num_merge_segments_str = (
+                f"_num_merge_segments_{num_merge_segments}"
+                if not num_merge_segments == 0
+                else ""
+            )
             logdir_prefix = (
                 f"PPO_{env_class_str}"
                 + f"{warm_up_str}{start_policy_after_warm_up_str}"
                 + f"{num_remove_start_state_segments_str}{num_remove_end_state_segments_str}"
+                + f"{num_merge_segments_str}"
                 + f"_{lane_str}_{av_percent_str}"
                 + f"{num_control_seg_str}{per_lane_str}{right_lane_str}{merge_flow_percent_str}"
                 + f"_{seed_str}_{timestr}"
