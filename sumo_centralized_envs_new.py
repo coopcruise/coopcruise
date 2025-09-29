@@ -576,7 +576,9 @@ class SumoEnvCentralizedBase(SumoEnv):
                 infos.update(
                     {
                         self.CENTRALIZED_AGENT_NAME: {
-                            "num_dropped_steps": num_dropped_steps
+                            "num_dropped_steps": num_dropped_steps,
+                            "step_count": self.step_count,
+                            "sim_steps": self.num_steps,
                         }
                     }
                 )
