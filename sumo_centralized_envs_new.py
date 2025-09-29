@@ -490,6 +490,7 @@ class SumoEnvCentralizedBase(SumoEnv):
 
     def step(self, action: Dict[str, Any]):
         got_action_from_policy = True
+        last_update_step_count = self.step_count
         # Progress the simulation until the profile should be updated
         while True:
             self._set_action(action)
@@ -567,6 +568,18 @@ class SumoEnvCentralizedBase(SumoEnv):
                 centralized_truncateds = {"__all__": truncateds["__all__"]}
                 reward = self.current_reward.copy()
                 self.current_reward = {self.CENTRALIZED_AGENT_NAME: 0}
+                num_dropped_steps = int(
+                    (self.step_count - last_update_step_count)
+                    / self.num_simulation_steps_per_step
+                    - 1
+                )
+                infos.update(
+                    {
+                        self.CENTRALIZED_AGENT_NAME: {
+                            "num_dropped_steps": num_dropped_steps
+                        }
+                    }
+                )
                 return (
                     centralized_obs,
                     reward,
