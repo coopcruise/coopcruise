@@ -573,12 +573,14 @@ class SumoEnvCentralizedBase(SumoEnv):
                     / self.num_simulation_steps_per_step
                     - 1
                 )
+                num_steps_to_sim_end = (
+                    self.num_steps - self.step_count
+                ) / self.num_simulation_steps_per_step - 1
                 infos.update(
                     {
                         self.CENTRALIZED_AGENT_NAME: {
                             "num_dropped_steps": num_dropped_steps,
-                            "step_count": self.step_count,
-                            "sim_steps": self.num_steps,
+                            "num_steps_to_sim_end": num_steps_to_sim_end,
                         }
                     }
                 )
