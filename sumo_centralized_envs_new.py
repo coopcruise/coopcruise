@@ -575,6 +575,7 @@ class SumoEnvCentralizedBase(SumoEnv):
                     infos,
                 )
 
+            action = {}
         # Recursively progress the simulation until the profile should be updated
         # return self.step({})
 
