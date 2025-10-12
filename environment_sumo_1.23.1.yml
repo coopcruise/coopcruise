@@ -40,5 +40,6 @@ dependencies:
       # - eclipse-sumo==1.17.0
       - eclipse-sumo==1.23.1
 variables:
-  PYTHONPATH:   $PYTHONPATH: PATH\TO\Eclipse\Sumo\tools;PATH\TO\CODE\DIR
+  PYTHONPATH:   $PYTHONPATH: PATH\TO\CODE\DIR
+
 
