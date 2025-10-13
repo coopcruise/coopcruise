@@ -1,36 +1,69 @@
 #!/bin/bash
 
-# Usage: ./summarize_rl_results_av_seed.sh /path/to/main_directory
+# Usage:
+#   ./summarize_rl_results_av_seed.sh /path/to/main_directory [--exploit] [--results_dir_prefix PREFIX]
 trap "echo 'Stopping all child processes...'; kill 0; exit" SIGINT
 
-MAIN_DIR="$1"
-CHECKPOINT_NAME="checkpoint_best"  # <--- Set this to your desired checkpoint directory name
+# -----------------------
+# Parse required + optional args
+# -----------------------
+MAIN_DIR=""
+EXPLOIT_FLAG=""
+RESULTS_DIR_PREFIX=""
 
-# RESULTS_DIR=$(basename "$MAIN_DIR")
+# First positional argument is MAIN_DIR
+if [[ $# -lt 1 ]]; then
+    echo "Usage: $0 /path/to/main_directory [--exploit] [--results_dir_prefix PREFIX]"
+    exit 1
+fi
+
+MAIN_DIR="$1"
+shift  # Remove MAIN_DIR from the list of arguments
+
+# Parse remaining arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --exploit)
+            EXPLOIT_FLAG="--exploit"
+            shift
+            ;;
+        --results_dir_prefix)
+            if [[ -n "$2" ]]; then
+                RESULTS_DIR_PREFIX="--results_dir_prefix $2"
+                shift 2
+            else
+                echo "Error: --results_dir_prefix requires a string argument"
+                exit 1
+            fi
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            echo "Usage: $0 /path/to/main_directory [--exploit] [--results_dir_prefix PREFIX]"
+            exit 1
+            ;;
+    esac
+done
+
+# -----------------------
+# Script configuration
+# -----------------------
+CHECKPOINT_NAME="checkpoint_best"
 EVALUATE_SCRIPT="evaluate_control_rl.py"
 ANALYSIS_SCRIPT="simulation_analysis.py"
 NUM_TESTS=30
 NUM_WORKERS=0
 RANDOM_SEED=0
 NUM_PROCESSES=10
-# NUM_PROCESSES=10
 
 declare -a SINGLE_AV_PERCENTS=()
 declare -a MULTI_AV_PERCENTS=()
 
-if [ -z "$MAIN_DIR" ]; then
-    echo "Usage: $0 /path/to/main_directory"
-    exit 1
-fi
-
-# Loop over all matching checkpoint directories
+# -----------------------
+# Main loop
+# -----------------------
 while read -r CHECKPOINT_DIR; do
-
     PARENT_DIR=$(dirname "$CHECKPOINT_DIR")
     PARENT_NAME=$(basename "$PARENT_DIR")
-
-    # Extract ENV_CLASS using pattern matching
-    # IFS='_' read -r ALGO ENV_CLASS _ <<< "$PARENT_NAME"
 
     # Extract av_<number>
     if [[ "$PARENT_NAME" =~ av_([0-9]+) ]]; then
@@ -41,11 +74,18 @@ while read -r CHECKPOINT_DIR; do
     fi
 
     # Build the python command
-    CMD=(python "$EVALUATE_SCRIPT" "$CHECKPOINT_DIR" --num_workers "$NUM_WORKERS" --num_tests "$NUM_TESTS" --random_seed "$RANDOM_SEED" --auto_results_dir)
+    CMD=(python "$EVALUATE_SCRIPT" "$CHECKPOINT_DIR"
+         --num_workers "$NUM_WORKERS"
+         --num_tests "$NUM_TESTS"
+         --random_seed "$RANDOM_SEED"
+         --auto_results_dir)
+
+    # Add optional flags if provided
+    [[ -n "$EXPLOIT_FLAG" ]] && CMD+=($EXPLOIT_FLAG)
+    [[ -n "$RESULTS_DIR_PREFIX" ]] && CMD+=($RESULTS_DIR_PREFIX)
 
     if [[ "$PARENT_NAME" == *single_lane* ]]; then
         SINGLE_AV_PERCENTS+=("$AV_PERCENT")
-        # CMD+=(--single_lane)
     else
         MULTI_AV_PERCENTS+=("$AV_PERCENT")
     fi
@@ -63,23 +103,3 @@ done < <(find "$MAIN_DIR" -type d -name "$CHECKPOINT_NAME")
 
 # Wait for all background jobs to finish
 wait
-
-# # Deduplicate each AV list
-# UNIQUE_SINGLE_AVS=($(printf "%s\n" "${SINGLE_AV_PERCENTS[@]}" | sort -n | uniq))
-# UNIQUE_MULTI_AVS=($(printf "%s\n" "${MULTI_AV_PERCENTS[@]}" | sort -n | uniq))
-
-# ANALYSIS_CMD=(python "$ANALYSIS_SCRIPT" --num_tests "$NUM_TESTS" --results_dir "$RESULTS_DIR")
-
-# # Run second script for single-lane AV percentages
-# if [ ${#UNIQUE_SINGLE_AVS[@]} -gt 0 ]; then
-#     echo "Running second script for single_lane AVs: ${UNIQUE_SINGLE_AVS[*]}"
-#     "${ANALYSIS_CMD[@]}" --av_percent "${UNIQUE_SINGLE_AVS[@]}" --single_lane &
-# fi
-
-# # Run second script for multi-lane AV percentages
-# if [ ${#UNIQUE_MULTI_AVS[@]} -gt 0 ]; then
-#     echo "Running second script for multi_lane AVs: ${UNIQUE_MULTI_AVS[*]}"
-#     "${ANALYSIS_CMD[@]}" --av_percent "${UNIQUE_MULTI_AVS[@]}" &
-# fi
-
-# wait
