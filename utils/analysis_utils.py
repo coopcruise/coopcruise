@@ -186,6 +186,10 @@ def get_sim_results_dir(sim_params: dict):
         name_postfix += f"_av_switch_seed_{random_av_switching_seed}"
 
     results_dir_name = sumo_config_file_name.split(".sumocfg")[0]
+    perturb = sim_params.get("perturb") or False
+    if perturb:
+        results_dir_name += f"_perturb_seed_{random_av_switching_seed}"
+
     av_percent = sim_params["av_percent"]
     if random_av_switching and av_percent > 0:
         results_dir_name += f"_random_switch_av_percent_{av_percent}"

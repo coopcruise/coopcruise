@@ -1,9 +1,14 @@
 from pathlib import Path
+import random
+from typing import Optional
+import xml.etree.ElementTree as ET
 
 from sumo_multi_agent_env import SumoConfig, EvaluationConfig
 
+from utils.metrics_utils import save_xml_element
 from utils.sumo_utils import (
     extract_highway_profile_detector_file_name,
+    get_route_file_path,
 )
 from utils.sumo_config_creation_pipeline import (
     get_sumo_config_od_file_stem,
@@ -129,7 +134,10 @@ def create_missing_sumo_config_files(sumo_config_params_update: dict):
 
 
 def get_centralized_env_config(
-    sumo_config_params_update: dict, sim_config_params: dict
+    sumo_config_params_update: dict,
+    sim_config_params: dict,
+    perturb: bool = False,
+    perturb_seed: int = 0,
 ):
     sumo_config_params = DEF_SUMO_CONFIG | sumo_config_params_update
     sumo_config_file_name, sumo_config_path = get_sumo_config_file_name(
@@ -138,6 +146,27 @@ def get_centralized_env_config(
 
     if not Path(sumo_config_path).exists():
         sumo_config_path = create_missing_sumo_config_files(sumo_config_params_update)
+
+    if perturb:
+        perturb_sumo_config_file_name, perturb_sumo_config_path = (
+            get_perturbed_sumo_config_file_name(
+                sumo_config_file_name, sumo_config_path, perturb_seed=perturb_seed
+            )
+        )
+        print(f"{perturb_sumo_config_file_name = }")
+        print(f"{perturb_sumo_config_path = }")
+        if not Path(perturb_sumo_config_path).exists():
+            create_perturbed_sumo_config_files(
+                perturb_sumo_config_path,
+                sumo_config_path,
+                perturb_seed=perturb_seed,
+            )
+
+        warm_up_time_perturbed = get_warm_up_from_sumo_config(perturb_sumo_config_path)
+        if warm_up_time_perturbed is not None:
+            sumo_config_params["warm_up_time"] = warm_up_time_perturbed
+
+        sumo_config_file_name = perturb_sumo_config_file_name
 
     use_libsumo = sim_config_params["use_libsumo"]
     show_gui_in_traci_mode = sim_config_params["show_gui_in_traci_mode"]
@@ -236,3 +265,186 @@ def get_centralized_env_config(
     )
 
     return env_config
+
+
+def get_perturbed_sumo_config_file_name(
+    sumo_config_file_name: str, sumo_config_path: str | Path, perturb_seed: int = 0
+):
+    sumo_config_file_name_perturb = (
+        sumo_config_file_name.strip(".sumocfg")
+        + f"_perturb_seed_{perturb_seed}"
+        + ".sumocfg"
+    )
+    return sumo_config_file_name_perturb, Path(
+        sumo_config_path
+    ).parent / sumo_config_file_name_perturb
+
+
+def create_perturbed_sumo_config_files(
+    perturb_sumo_config_path: str | Path,
+    sumo_config_path: str | Path,
+    perturb_seed: int = 0,
+):
+    assert Path(sumo_config_path).exists(), (
+        f"SUMO config file not found in: {sumo_config_path}"
+    )
+    original_route_file_path = get_route_file_path(sumo_config_path)
+    route_file_end = ".rou.xml"
+    output_route_file_path = Path(original_route_file_path).parent / (
+        original_route_file_path.name.strip(route_file_end)
+        + f"_perturb_seed_{perturb_seed}"
+        + route_file_end
+    )
+    perturb_departure_times(
+        original_route_file_path,
+        output_route_file_path,
+        # TODO: Make departure_taz value more general
+        departure_taz="taz_4",
+        seed=perturb_seed,
+    )
+    change_sumo_config_route_file(
+        sumo_config_path=sumo_config_path,
+        output_path=perturb_sumo_config_path,
+        old_route_file_name=Path(original_route_file_path).name,
+        new_route_file_name=Path(output_route_file_path).name,
+    )
+
+
+def perturb_departure_times(
+    input_route_file_path: str,
+    output_route_file_path: str,
+    departure_taz: str,
+    seed: int | None = None,
+):
+    """
+    Perturb departure times of vehicles departing from departure_taz
+    by first applying a global constant offset, then
+    applying per-vehicle offsets.
+
+    Parameters
+    ----------
+    input_xml : str
+        Path to input routes XML file.
+    output_xml : str
+        Path to output modified routes XML file.
+    seed : int
+        Random seed for reproducibility.
+    """
+    random.seed(seed)
+
+    tree = ET.parse(input_route_file_path)
+    root = tree.getroot()
+
+    # Step 1: sample a single constant offset for all relevant vehicles
+    constant_offset = round(random.uniform(-1.0, 1.0), 2)
+    print(f"Global constant offset: {constant_offset} s")
+
+    count = 0
+    for veh in root.findall("vehicle"):
+        if veh.get("fromTaz") == departure_taz:
+            depart = float(veh.get("depart"))
+
+            # Step 2: sample an individual offset for this vehicle
+            per_vehicle_offset = round(random.uniform(-0.2, 0.2), 2)
+
+            # Apply both offsets
+            new_depart = depart + constant_offset + per_vehicle_offset
+            # Optionally clamp to zero to avoid negative times
+            new_depart = max(0.0, new_depart)
+
+            veh.set("depart", f"{new_depart}")
+            count += 1
+
+    print(f"Updated {count} vehicles departing from {departure_taz}")
+
+    Path(output_route_file_path).parent.mkdir(parents=True, exist_ok=True)
+    save_xml_element(
+        root, output_route_file_path, encoding="utf-8", xml_declaration=True
+    )
+
+
+def change_sumo_config_route_file(
+    sumo_config_path: str,
+    output_path: str,
+    old_route_file_name: str,
+    new_route_file_name: str,
+):
+    """
+    Update the value of route-files in a configuration XML file.
+
+    Parameters
+    ----------
+    config_xml : str
+        Path to the original configuration XML.
+    output_config_xml : str
+        Path to save the updated configuration XML.
+    old_route : str
+        The original route file path as appears in the config.
+    new_route : str
+        The new route file path to replace it with.
+    """
+    tree = ET.parse(sumo_config_path)
+    root = tree.getroot()
+
+    # Find route-files element
+    route_elem = root.find("./input/route-files")
+    if route_elem is None:
+        raise ValueError("Could not find <route-files> element in configuration XML.")
+
+    current_value = route_elem.get("value")
+    print(f"Original route-files value: {current_value}")
+
+    # Replace it
+    if current_value == old_route_file_name:
+        route_elem.set("value", new_route_file_name)
+    else:
+        print(
+            "Warning: original route file name in config does not match the provided old_route."
+        )
+        print("Replacing anyway.")
+        route_elem.set("value", new_route_file_name)
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    tree.write(output_path, encoding="utf-8", xml_declaration=True)
+    print(f"Updated configuration saved to: {output_path}")
+
+
+def get_warm_up_from_sumo_config(sumo_config_path):
+    assert Path(sumo_config_path).exists(), (
+        f"SUMO config file not found in: {sumo_config_path}"
+    )
+    route_file_path = get_route_file_path(sumo_config_path)
+    # TODO: Make departure_taz value more general
+    warm_up_time = earliest_depart_from_taz(route_file_path, departure_taz="taz_4")
+    return warm_up_time
+
+
+def earliest_depart_from_taz(
+    route_xml_path: str, departure_taz: str
+) -> Optional[float]:
+    """
+    Finds the earliest departure time of vehicles departing from taz_4.
+
+    Parameters
+    ----------
+    route_xml_path : str
+        Path to the routes XML file.
+
+    Returns
+    -------
+    float or None
+        The earliest departure time among vehicles with fromTaz=departure_taz.
+        Returns None if no such vehicles are found.
+    """
+    tree = ET.parse(route_xml_path)
+    root = tree.getroot()
+
+    earliest_time = None
+
+    for veh in root.findall("vehicle"):
+        if veh.get("fromTaz") == departure_taz:
+            depart_time = float(veh.get("depart"))
+            if earliest_time is None or depart_time < earliest_time:
+                earliest_time = depart_time
+
+    return earliest_time

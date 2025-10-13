@@ -118,6 +118,7 @@ if __name__ == "__main__":
         debug = True
 
     num_processes = args.num_workers if not debug else 0
+    perturb = args.perturb
     use_const_control_parse = args.const_control
     const_control_val_parse = args.const_control_val
     const_control_val_norm_parse = args.const_control_val_norm
@@ -298,3 +299,5 @@ if __name__ == "__main__":
             "automatic_const_control_duration": automatic_const_control_duration,
             "const_control_params": const_control_params,
         }
+
+    run_all_simulations(sumo_config_params, sim_config_params, num_processes, perturb)

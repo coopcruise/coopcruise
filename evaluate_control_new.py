@@ -133,6 +133,13 @@ def create_eval_parser():
     )
 
     parser.add_argument(
+        "--perturb",
+        default=False,
+        action="store_true",
+        help="Whether to perturb merging vehicles departures.",
+    )
+
+    parser.add_argument(
         "--const_control",
         default=False,
         action="store_true",
@@ -256,6 +263,7 @@ def simulate(
     sumo_config_params_update: dict,
     sim_config_params: dict,
     worker_index: int | None = None,
+    perturb=False,
 ):
     sumo_config_params = DEF_SUMO_CONFIG | sumo_config_params_update
 
@@ -337,7 +345,10 @@ def simulate(
     sim_config_params.update(custom_name_postfix=custom_name_postfix)
 
     env_config = get_centralized_env_config(
-        sumo_config_params_update, sim_config_params
+        sumo_config_params_update,
+        sim_config_params,
+        perturb=perturb,
+        perturb_seed=random_av_switching_seed,
     )
     if worker_index is not None:
         env_config = EnvContext(env_config, worker_index=worker_index)
@@ -587,6 +598,7 @@ def simulate(
 def do_job(
     tasks_to_accomplish: queue.Queue,
     worker_index: int | None = None,
+    perturb=False,
 ):
     while True:
         try:
@@ -599,12 +611,15 @@ def do_job(
         except queue.Empty:
             break
 
-        simulate(**task, worker_index=worker_index)
+        simulate(**task, worker_index=worker_index, perturb=perturb)
     return True
 
 
 def run_all_simulations(
-    sumo_config_params, sim_config_params, num_processes=NUM_ROLLOUT_WORKERS
+    sumo_config_params,
+    sim_config_params,
+    num_processes=NUM_ROLLOUT_WORKERS,
+    perturb=False,
 ):
     sim_configs = get_sim_configs(sumo_config_params, sim_config_params)
     sim_queue = multiprocessing.Queue() if num_processes > 0 else queue.Queue()
@@ -613,7 +628,7 @@ def run_all_simulations(
     if num_processes > 0:
         processes: list[multiprocessing.Process] = []
         for w in range(num_processes):
-            p = multiprocessing.Process(target=do_job, args=[sim_queue, w])
+            p = multiprocessing.Process(target=do_job, args=[sim_queue, w, perturb])
             processes.append(p)
             p.start()
 
@@ -623,7 +638,7 @@ def run_all_simulations(
 
     else:
         print(f"{sim_queue.qsize() = }")
-        do_job(sim_queue)
+        do_job(sim_queue, perturb=perturb)
         # task = sim_queue.get()
         # simulate(**task)
 

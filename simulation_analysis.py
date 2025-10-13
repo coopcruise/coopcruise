@@ -146,6 +146,7 @@ def extract_params(results_dir: str, ref_results_dir: str | None = None):
                 if "warmup" in subdir
             ]
         ),
+        "perturb": set(["perturb" in subdir for subdir in subdirs]),
         "merge_flow_percent": set(
             [
                 int(subdir.split("merge_flow_percent_")[1].split("_")[0])
