@@ -147,10 +147,20 @@ def get_sim_results_dir(sim_params: dict):
         else False
     )
     tau_val = sim_params.get("tau_val")
+    use_const_control = sim_params.get("use_const_control") or False
+    const_control_only_rightmost_lane = (
+        sim_params.get("const_control_only_rightmost_lane") or False
+    )
+    const_control_val = sim_params.get("const_control_val")
+    const_control_val_norm = sim_params.get("const_control_val_norm")
     name_postfix = ""
+    no_control = False
     if custom_name_postfix is not None:
         name_postfix = custom_name_postfix
-    elif not any([use_learned_control, use_vsl_control, use_tau_control]):
+    elif not any(
+        [use_learned_control, use_vsl_control, use_tau_control, use_const_control]
+    ):
+        no_control = True
         name_postfix = "no_control"
     elif use_learned_control:
         name_postfix = "rl_control"
@@ -159,6 +169,14 @@ def get_sim_results_dir(sim_params: dict):
     elif use_tau_control:
         name_postfix = f"tau_control_{tau_val}"
         if tau_control_only_rightmost_lane and not single_lane:
+            name_postfix += "_rightmost"
+    elif use_const_control:
+        name_postfix = (
+            f"const_control_{const_control_val}"
+            if const_control_val is not None
+            else f"const_control_norm_{const_control_val_norm}"
+        )
+        if const_control_only_rightmost_lane and not single_lane:
             name_postfix += "_rightmost"
 
     random_av_switching = sim_params["random_av_switching"]
@@ -201,16 +219,44 @@ def valid_params(params: dict):
         if params.get("use_vsl_control") is not None
         else False
     )
-    control_types = [use_learned_control, use_tau_control, use_vsl_control]
+    use_const_control = params.get("use_const_control") or False
+    const_control_val = (
+        params.get("const_control_val")
+        if params.get("const_control_val") is not None
+        else None
+    )
+    const_control_val_norm = (
+        params.get("const_control_val_norm")
+        if params.get("const_control_val_norm") is not None
+        else None
+    )
+    control_types = [
+        use_learned_control,
+        use_tau_control,
+        use_vsl_control,
+        use_const_control,
+    ]
+    valid_const_control_val = (
+        const_control_val is not None and const_control_val_norm is None
+    ) or (const_control_val is None and const_control_val_norm is not None)
+    no_control = not any(control_types)
     if len([control_type for control_type in control_types if control_type]) > 1:
         return False
-    if no_merge and use_learned_control:
+    if no_merge and not no_control:
         return False
-    if no_merge and use_tau_control:
-        return False
+    # if no_merge and use_learned_control:
+    #     return False
+    # if no_merge and use_tau_control:
+    #     return False
     if not use_tau_control and tau_val is not None:
         return False
     if use_tau_control and tau_val is None:
+        return False
+    if no_merge and use_const_control:
+        return False
+    if use_const_control and not valid_const_control_val:
+        return False
+    if not use_const_control and valid_const_control_val:
         return False
 
     return True

@@ -192,6 +192,30 @@ def extract_params(results_dir: str, ref_results_dir: str | None = None):
         "tau_control_only_rightmost_lane": set(
             ["tau_control" in subdir and "rightmost" in subdir for subdir in subdirs]
         ),
+        "use_const_control": (
+            [False, True]
+            if any(["const_control" in subdir for subdir in subdirs])
+            else [False]
+        ),
+        "const_control_val": set(
+            [None] +
+            [
+                float(subdir.split("const_control_")[1].split("_")[0])
+                for subdir in subdirs
+                if "const_control_" in subdir and "const_control_norm_" not in subdir
+            ]
+        ),
+        "const_control_val_norm": set(
+            [None] +
+            [
+                float(subdir.split("const_control_norm_")[1].split("_")[0])
+                for subdir in subdirs
+                if "const_control_norm_" in subdir
+            ]
+        ),
+        "const_control_only_rightmost_lane": set(
+            ["const_control" in subdir and "rightmost" in subdir for subdir in subdirs]
+        ),
     }
 
     params = {
@@ -206,7 +230,16 @@ def extract_params(results_dir: str, ref_results_dir: str | None = None):
         for key, val in params.items()
         if isinstance(val, list)
         and len(val) > 1
-        and key in ["no_merge", "use_learned_control", "use_tau_control", "tau_val"]
+        and key
+        in [
+            "no_merge",
+            "use_learned_control",
+            "use_tau_control",
+            "tau_val",
+            "use_const_control",
+            "const_control_val",
+            "const_control_val_norm",
+        ]
     }
 
     compare_between_sim_params = {
