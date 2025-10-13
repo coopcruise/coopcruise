@@ -96,6 +96,13 @@ def add_parser_args(parser: argparse.ArgumentParser):
         action="store_true",
         help="Whether to use an automatic results directory name based on checkpoint parameters. This will disregard results_dir",
     )
+
+    parser.add_argument(
+        "--exploit",
+        default=False,
+        action="store_true",
+        help="Whether to use exploitation actions in RL.",
+    )
     return parser
 
 
@@ -182,7 +189,7 @@ if __name__ == "__main__":
     network_file_name = (
         "short_merge_lane_separate_exit_lane_disconnected_merge_lane.net.xml"
     )
-
+    exploit = args.exploit
     results_dir_name = args.results_dir
     if args.auto_results_dir:
         lane_type_str = "_single_lane" if single_lane else "_multi_lane"
@@ -216,6 +223,7 @@ if __name__ == "__main__":
     rl_control_params = {
         "alg_checkpoint_path": alg_checkpoint_path,
         "rl_per_lane_control": rl_per_lane_control,
+        "exploit": exploit,
     }
 
     scenario_params = {

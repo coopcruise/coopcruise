@@ -303,6 +303,7 @@ def simulate(
 
         alg_checkpoint_path = rl_control_params["alg_checkpoint_path"]
         rl_per_lane_control = rl_control_params["rl_per_lane_control"]
+        exploit = rl_control_params.get("exploit") or False
 
     single_lane = sumo_config_params["single_lane"]
 
@@ -427,7 +428,8 @@ def simulate(
         actions = {}
         if use_learned_control:
             action_norm = policy.compute_single_action(
-                obs["centralized"], explore=True
+                obs["centralized"],
+                explore=(not exploit),
             )[0]
             action_scaled = unsquash_action(action_norm, env.action_space)
             actions = {env.CENTRALIZED_AGENT_NAME: action_scaled}
