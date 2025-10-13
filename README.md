@@ -1,28 +1,24 @@
-# Cooperative Cruising: Reinforcement Learning based Time-Headway Control for Increased Traffic Efficiency
+# Cooperative Cruising: Reinforcement Learning based Headway Control for Highway Congestion Reduction
 
-This repository contains the source code to reproduce the experiments in our paper "Cooperative Cruising: Reinforcement Learning based Time-Headway Control for Increased Traffic Efficiency."
+This repository contains the source code to reproduce the experiments in our paper "Cooperative Cruising: Reinforcement Learning based Headway Control for Highway Congestion Reduction."
 
 If you find this repository helpful in your publications, please consider citing our paper.
 
 ## Introduction
-The proliferation of automated vehicles equipped with advanced driver assistance systems (ADAS) represents an opportunity for improving driving efficiency and alleviating traffic congestion.
-However, proposed ADAS-based congestion reduction methods often assume connectivity, perception, and control capabilities that are not widely available in vehicles.
+Highway congestion remains one of the most pressing challenges in modern transportation. Connected automated vehicles (CAVs) equipped with adaptive cruise control (ACC) create new opportunities for congestion mitigation. Traditional practice relies on *Eulerian* variable speed limits (VSL), which regulate traffic through roadside signs but suffer from infrequent updates and limited driver compliance. More recent research has explored *Lagrangian* strategies that directly influence individual vehicles, but these approaches have struggled to deliver consistent improvements in realistic multi-lane highways, where unpredictable lane changes undermine vehicle-level decisions.
 
-We propose a dynamic time-headway control approach for increasing the average travel speed of vehicles while maintaining safety in high-volume highway traffic, utilizing existing traffic estimation technology and low-bandwidth vehicle-to-infrastructure connectivity.
+This paper introduces a reinforcement learning based Eulerian system that mitigates congestion by issuing frequent control commands to ACC-equipped vehicles approaching bottlenecks. Unlike traditional VSL, our system achieves reliable compliance and adapts dynamically to real-time traffic, while avoiding reliance on lane-change prediction by regulating density at the aggregate level. We evaluate three variants of our system---speed-limit control, time-headway control, and distance-headway control---in large-scale  simulations with thousands of vehicles across a range of merging flows and ACC penetration rates. Results show that 
+headway-based variants improve traffic flow by up to 10.6\% over human traffic and 6.7\% over traditional VSL, while speed-limit control gives smaller gains.
 
-At the core of our approach is a safe, reinforcement learning-based controller that dynamically communicates desired time headways to automated vehicles based on real-time traffic conditions as they approach bottlenecks. These desired time headways are then used by automated driving systems, such as Adaptive Cruise Control (ACC), to adjust their following distance. Our approach outperforms both simulated human-driven traffic and an optimized fixed headway control scheme in highway simulation featuring hundreds of vehicles with complex lane-change and car-following interactions, across a variety of traffic conditions.
-
-Our control system is designed to reduce the gap to real-world deployment by (i) leveraging available connectivity, traffic estimation, and ADAS technology, and (ii) maintaining vehicle safety by building on top of existing ACC systems. Our system thus offers a potentially scalable and practical approach that could positively impact numerous road users.
+To strengthen evaluation, we propose a novel metric for average speed in simulations with dynamic vehicle entry and exit, addressing a recognized flaw in simulation studies. Taken together, the system design,  grounded in deployable technologies, and the empirical findings indicate that Eulerian headway control of ACC-equipped vehicles opens a path toward practical, safe, and scalable congestion mitigation systems.
 
 ## Dependencies
 
 To configure a python environment to run our code:
-1. Install SUMO 1.17.
 1. Clone the code in this repository.
-1. Edit the environment.yml file:
-    - Replace PATH\TO\Eclipse\Sumo\tools with the actual path to the tools directory under the SUMO installation directory.
+1. Edit the environment_sumo_1.23.1.yml file:
     - Replace PATH\TO\CODE\DIR with the actual path to the cloned code directory.
-1. install the conda environment using the edited environment.yml file.
+1. install the conda environment using the edited environment_1.23.1.yml file.
 
 List of main libraries used:
 + Python 3.x/numpy/scipy/pandas/matplotlib
@@ -35,45 +31,40 @@ List of main libraries used:
 
 ### Running experiments
 
-Experiments can be run the following command. To reproduce the results in our paper, use default parameters, and append the flag `--random_seed 0` to the command below.
+Experiments can be run the following command. To reproduce the results in our paper, use the parameters specified below.
 
 ```
-python train_ppo.py
+python train_ppo_centralized.py
 ```
 Optional parameters can be specified using the following flags:
-+ ACC-equipped vehicle percentage: `--av_percent <AV_PERCENT>`. Default: 100
-+ Use single-lane scenario: `--single_lane`. Default: False
-+ Number of segments before the bottleneck within which to control ACC-equipped vehicles: `--num_control_seg <NUM_CONTROL_SEGMENTS>`. Default: 2
-+ Simulation time horizon: `--sim_time <SIMULATION_TIME_HORIZON>`. Default: 500
-+ Number of parallel rollout workers: `--num_workers <NUM_WORKERS>`. Default: 10
++ Environment class to use (type of control): `--env_cls < ENVIRONMENT CLASS NAME>`. Default: `SumoEnvCentralizedTau` (time-headway); Paper: `SumoEnvCentralizedTau` or `SumoEnvCentralizedMinGap` (distance-headway) or `SumoEnvCentralizedVel` (speed limit).
++ ACC-equipped vehicle percentage: `--av_percent <AV_PERCENT>`. Default: `100`; Paper: `100` or `60` or `20`
++ Simulation running time before merging traffic starts: `--warm_up`. Default: `200`; Paper: `60`.
++ Merging traffic flow percent of maximum inflow: `--merge_flow_percent`. Default: `100`; Paper: `100` or `50` or `25`.
++ Use single-lane scenario: `--single_lane`. Default & paper: False
++ Number of segments before the bottleneck within which to control ACC-equipped vehicles: `--num_control_seg <NUM_CONTROL_SEGMENTS>`. Default & paper: `2`
++ Simulation time horizon: `--sim_time <SIMULATION_TIME_HORIZON>`. Default & paper: `500`
++ Random seed: `--random_seed <SEED INT>`. Default: None; Paper results: `0`
++ Flag to start using actions from policy only after warm-up is completed. `--start_policy_after_warm_up`. Default: False; Paper: True
++ Number of simulated scenario highway segments (counting from most downstream) to remove from the state. `--num_remove_end_state_segments`. Default: `0`; Paper: `2`
++ Number of parallel rollout workers: `--num_workers <NUM_WORKERS>`. Default & paper: `10`
 
 ### Evaluating controllers
 
-After training using to code above, RL controllers can be evaluated using the following command. If optional parameters were specified in the training command, make sure to include them in the evaluation command as well.
+After training using to code above, RL controllers can be evaluated using the following command.
 ```
-python evaluate_control.py <CHECKPOINT_DIR_PATH>
-```
-optional parameters:
-+ ACC-equipped vehicle percentage: `--av_percent <AV_PERCENT>`. Default: 100
-+ Use single-lane scenario: `--single_lane`. Default: False
-+ Number of segments before the bottleneck within which to control ACC-equipped vehicles: `--num_control_seg <NUM_CONTROL_SEGMENTS>`. Default: 2
-+ Simulation time horizon: `--sim_time <SIMULATION_TIME_HORIZON>`. Default: 500
-+ Number of tests to run: `--num_tests <NUMBER_OF_TESTS>`. Default: 30
-+ Results output directory name: `--results_dir <DIRECTORY_NAME>`. Default: 'test'
-
-### Generating plots
-
-After running the evaluation above, plots can then be generated by running the following command. Note that:
-1. The value of `--results_dir` must be the same as when running the evaluation command.
-1. If you evaluated controllers for different values of av_percent, you can plot all results on a single plot by listing multiple values after the `--av_percent` option, as done in Figure 3 in the paper.
-1. You must specify the same num_tests as used for the evaluation.
-1. You must specify if you evaluated a single lane scenario.
-
-```
-python simulation_analysis.py
+python evaluate_control_rl.py <CHECKPOINT_DIR_PATH>
 ```
 optional parameters:
-+ ACC-equipped vehicle percentage: `--av_percent <AV_PERCENT_1> <AV_PERCENT_2> <AV_PERCENT_3> ...`. Default: 100
-+ Use single-lane scenario: `--single_lane`. Default: False
-+ Number of tests to run: `--num_tests <NUMBER_OF_TESTS>`. Default: 30
-+ Evaluation results directory name: `--results_dir <DIRECTORY_NAME>`. Default: 'test'
++ Number of tests to run: `--num_tests <NUMBER_OF_TESTS>`. Default: `30`
++ Results output directory name: `--results_dir <DIRECTORY_NAME>`. Default: `test`
++ Flag to automatically create results directory name (recommended). `--auto_results_dir`. Default: False.
+
+### Computeing aggregate average speed metric
+
+After running the evaluation above, aggregate metrics can be computed using the following script. Note that you must specify the required results directories to use with the `--results_dir` argument.
+```
+python simulation_analysis.py --results_dir <RESULTS DIRECTORY 1> <RESULTS DIRECTORY 2> <RESULTS DIRECTORY 3> ...
+```
+Parameters:
++ Evaluation results directory name: `--results_dir <DIRECTORY_NAME>`. Default: 'test'. You may specify more than one directory to compute performance metrics for all given directories.
