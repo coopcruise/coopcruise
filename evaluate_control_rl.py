@@ -98,6 +98,13 @@ def add_parser_args(parser: argparse.ArgumentParser):
     )
 
     parser.add_argument(
+        "--results_dir_prefix",
+        type=str,
+        default="",
+        help="Simulation results prefix to add. Used only together with --auto_results_dir",
+    )
+
+    parser.add_argument(
         "--exploit",
         default=False,
         action="store_true",
@@ -193,16 +200,18 @@ if __name__ == "__main__":
     exploit = args.exploit
     results_dir_name = args.results_dir
     if args.auto_results_dir:
+        prefix_str:str = args.results_dir_prefix
         lane_type_str = "_single_lane" if single_lane else "_multi_lane"
         control_type_str = (
             "_right_lane_control"
             if right_lane_control
             else ("_per_lane_control" if rl_per_lane_control else "")
         )
+        const_control_str = "_const_control" if use_const_control_parse else ""
+        exploit_str = "_exploit" if exploit and not use_const_control_parse else "_explore"
         merge_inflow_str = f"_merge_flow_percent_{merge_flow_percent}"
-        results_dir_name = (
-            f"{env_class}{control_type_str}{merge_inflow_str}{lane_type_str}"
-        )
+        perturb_str = "_perturb" if perturb else ""
+        results_dir_name = f"{prefix_str}{env_class}{control_type_str}{const_control_str}{merge_inflow_str}{lane_type_str}{perturb_str}{exploit_str}"
 
     scenario_dir = Path("scenarios/single_junction") / results_dir_name
 
