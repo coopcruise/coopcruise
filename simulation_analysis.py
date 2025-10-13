@@ -93,6 +93,16 @@ def create_parser():
         ),
     )
 
+    parser.add_argument(
+        "--ref_results_dir",
+        type=str,
+        nargs="+",
+        default=None,
+        help=(
+            "Simulation reference results output directory name. "
+            "If specified, must be the same length as the specified --results_dirs"
+        ),
+    )
     # parser.add_argument(
     #     "--results_dir",
     #     type=str,
@@ -102,9 +112,12 @@ def create_parser():
     return parser
 
 
-def extract_params(results_dir: str):
+def extract_params(results_dir: str, ref_results_dir: str | None = None):
     scenario_dir = Path(SCENARIO_DIR) / results_dir
     results_dir_path = Path("results") / results_dir
+
+    ref_scenario_dir = Path(SCENARIO_DIR) / (ref_results_dir or results_dir)
+    ref_results_dir_path = Path("results") / (ref_results_dir or results_dir)
 
     # network_file_name = None
     # network_file_name = (
@@ -112,6 +125,11 @@ def extract_params(results_dir: str):
     # )
     if not results_dir_path.exists():
         raise ValueError(f"results dir: {results_dir_path} does not exist!")
+
+    if not ref_results_dir_path.exists():
+        raise ValueError(
+            f"reference results dir: {ref_results_dir_path} does not exist!"
+        )
 
     result_dir_name_str = "edge_flows_interval"
     subdirs = [
@@ -211,7 +229,7 @@ def extract_params(results_dir: str):
 
     common_sim_params = (
         DEF_SIM_PARAMS
-        | {"scenario_dir": scenario_dir}
+        | {"scenario_dir": scenario_dir, "ref_scenario_dir": ref_scenario_dir}
         | {
             key: val
             for key, val in params.items()
@@ -293,17 +311,22 @@ def main():
     # av_percent = args.av_percent
 
     results_dirs = args.results_dir
+    ref_results_dirs = args.ref_results_dir or results_dirs
+
+    assert len(results_dirs) == len(ref_results_dirs), (
+        "--ref_results_dirs have the same number of arguments as --results_dirs!"
+    )
 
     compare_controllers = len(results_dirs) > 1
     performances = []
 
-    for results_dir in results_dirs:
+    for results_dir, ref_results_dir in zip(results_dirs, ref_results_dirs):
         (
             common_sim_params,
             compare_within_sim_params,
             compare_between_sim_params,
             divide_keys,  # TODO
-        ) = extract_params(results_dir)
+        ) = extract_params(results_dir, ref_results_dir)
         # print(f"{common_sim_params = }")
         # print(f"{compare_within_sim_params = }")
         # print(f"{compare_between_sim_params = }")

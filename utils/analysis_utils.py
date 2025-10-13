@@ -174,9 +174,12 @@ def get_sim_results_dir(sim_params: dict):
 
     results_dir_name += f"_{name_postfix}"
 
-    results_dir_path = (
-        Path("results") / sumo_config_file_path.parent.name / results_dir_name
-    )
+    scenario_dir_path = sim_params["scenario_dir"]
+    if sim_params["no_merge"] or no_control:
+        scenario_dir_path = sim_params.get("ref_scenario_dir") or scenario_dir_path
+    scenario_dir_name = Path(scenario_dir_path).name
+
+    results_dir_path = Path("results") / scenario_dir_name / results_dir_name
     return str(results_dir_path)
 
 
