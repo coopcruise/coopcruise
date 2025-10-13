@@ -145,7 +145,11 @@ def extract_params(results_dir: str):
                 if "av_percent" in subdir
             ]
         ),
-        "use_learned_control": set(["rl_control" in subdir for subdir in subdirs]),
+        "use_learned_control": (
+            [False, True]
+            if any(["rl_control" in subdir for subdir in subdirs])
+            else [False]
+        ),
         "random_av_switching_seed": set(
             [
                 int(subdir.split("av_switch_seed_")[1].split("_")[0])
@@ -173,7 +177,7 @@ def extract_params(results_dir: str):
     }
 
     params = {
-        key: sorted(list(val))
+        key: sorted(val, key=lambda x: (x is not None, x))
         if len(val) > 1
         else (val.pop() if len(val) > 0 else None)
         for key, val in params.items()
