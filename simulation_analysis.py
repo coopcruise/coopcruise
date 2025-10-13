@@ -1,4 +1,5 @@
 import argparse
+import json
 from pathlib import Path
 from evaluate_control_rl import MERGE_FLOW_PERCENT
 from utils.analysis_utils import (
@@ -324,6 +325,8 @@ def main():
         ax_mixed_stat.set_xlim(left=0 - 100 * 0.05, right=100 * 1.05)
 
         Path(save_dir).mkdir(exist_ok=True)
+        with open(Path(save_dir) / "performance.json", "w") as fp:
+            json.dump(performance, fp)
         for format in FIG_SAVE_FORMATS:
             fig_mixed_stat.savefig(
                 Path(save_dir)
