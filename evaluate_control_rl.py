@@ -111,7 +111,9 @@ if __name__ == "__main__":
         debug = True
 
     num_processes = args.num_workers if not debug else 0
-
+    use_const_control_parse = args.const_control
+    const_control_val_parse = args.const_control_val
+    const_control_val_norm_parse = args.const_control_val_norm
     # Set seed to an integer for deterministic simulation. Set to None for
     # default behavior.
     random_seed = args.random_seed
@@ -125,17 +127,15 @@ if __name__ == "__main__":
 
     alg_checkpoint_path = args.path
 
-    use_tau_control = False  # [False, True]
-    tau_control_only_rightmost_lane = False
-    automatic_tau_duration = True
-
     assert alg_checkpoint_path is not None, "please provide algorithm checkpoint path"
     assert os.path.exists(alg_checkpoint_path), (
         f"checkpoint path does not exist: {alg_checkpoint_path}"
     )
 
-    no_merge = [False, True]
-    use_learned_control = [False, True]
+    no_merge = [False, True] if not use_const_control_parse else False
+    use_learned_control = [False, True] if not use_const_control_parse else False
+    # use_const_control = [False, True] if use_const_control_parse else False
+    use_const_control = True if use_const_control_parse else False
     no_rerun_existing = True
     color_av_by_action_idx = COLOR_AV_BY_ACTION_IDX
 
@@ -247,7 +247,6 @@ if __name__ == "__main__":
         "use_tau_control": False,
         "num_simulation_steps_per_step": num_simulation_steps_per_step,
         "simulation_time": simulation_time,
-        "automatic_tau_duration": True,
         "tau_control_params": None,
         "rl_control_params": rl_control_params,
         "scenario_params": scenario_params,
@@ -266,4 +265,28 @@ if __name__ == "__main__":
         )
         env_config_overrides |= DEBUG_ENV_CONFIG_OVERRIDES
 
-    run_all_simulations(sumo_config_params, sim_config_params, num_processes)
+    if use_const_control_parse:
+        const_control_only_rightmost_lane = False
+        automatic_const_control_duration = True
+        const_control_val = const_control_val_parse
+        const_control_val_norm = const_control_val_norm_parse
+        if const_control_val is not None and const_control_val_norm is not None:
+            raise ValueError(
+                "Please use only one of --const_control_val and --const_control_val_norm"
+            )
+        const_control_constants = {
+            "const_control_only_rightmost_lane": const_control_only_rightmost_lane,  # True,
+            # The following is not relevant if automatic_const_control_duration=True
+            "const_control_start_time": warm_up_time,
+            "const_control_duration": 100,
+        }
+        const_control_params = const_control_constants | {
+            "const_control_val": const_control_val,
+            "const_control_val_norm": const_control_val_norm,
+        }
+        sim_config_params |= {
+            "use_learned_control": False,
+            "use_const_control": use_const_control if not debug else True,
+            "automatic_const_control_duration": automatic_const_control_duration,
+            "const_control_params": const_control_params,
+        }

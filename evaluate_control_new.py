@@ -17,9 +17,14 @@ from ray.rllib.utils.spaces.space_utils import unsquash_action
 from ray.rllib.env.env_context import EnvContext
 import traci.constants as tc
 
-from sumo_centralized_envs_new import SumoEnvCentralizedTau
+from sumo_centralized_envs_new import (
+    SumoEnvCentralizedMinGap,
+    SumoEnvCentralizedTau,
+    SumoEnvCentralizedVel,
+)
 
 from train_ppo_centralized import (
+    ENV_CLS_STR_OPTIONS,
     get_env_class_from_str,
     add_parser_simulation_params,
     DEF_SUMO_CONFIG_PARAMS,
@@ -126,6 +131,27 @@ def create_eval_parser():
         default=RESULTS_DIR,
         help="Simulation results output directory name.",
     )
+
+    parser.add_argument(
+        "--const_control",
+        default=False,
+        action="store_true",
+        help="Whether to use constant control signals (used to get baselines).",
+    )
+
+    parser.add_argument(
+        "--const_control_val",
+        type=float,
+        default=None,
+        help="Value of control signal to use for the constant control baseline, if used.",
+    )
+
+    parser.add_argument(
+        "--const_control_val_norm",
+        type=float,
+        default=None,
+        help="Normalized value of control signal to use for the constant control baseline, if used.",
+    )
     return parser
 
 
@@ -178,6 +204,27 @@ def add_sims_to_queue(sim_queue: queue.Queue, sim_configs: list):
         sim_queue.put(sim_config)
 
 
+def get_const_control_params(env_obj):
+    if isinstance(env_obj, SumoEnvCentralizedVel):
+        default_val = env_obj._get_control_profile_max_speed()
+        min_val = 0
+        max_val = default_val
+    elif isinstance(env_obj, SumoEnvCentralizedMinGap):
+        default_val = env_obj.default_min_gap
+        min_val = env_obj.min_min_gap
+        max_val = env_obj.max_min_gap
+    elif isinstance(env_obj, SumoEnvCentralizedTau):
+        default_val = env_obj.default_tau
+        min_val = env_obj.min_tau
+        max_val = env_obj.max_tau
+    else:
+        raise ValueError(
+            f"The input environment is of an unsupported class: {type(env_obj)}. "
+            + f"Please enter an instance of one of the following: {ENV_CLS_STR_OPTIONS}"
+        )
+    return default_val, min_val, max_val
+
+
 def is_valid_params(params: dict):
     no_merge = params.get("no_merge") if params.get("no_merge") is not None else False
     use_learned_control = (
@@ -185,32 +232,21 @@ def is_valid_params(params: dict):
         if params.get("use_learned_control") is not None
         else False
     )
-    use_tau_control = (
-        params.get("use_tau_control")
-        if params.get("use_tau_control") is not None
-        else False
+    use_const_control = params.get("use_const_control") or False
+    automatic_const_control_duration = (
+        params.get("automatic_const_control_duration") or True
     )
-    automatic_tau_duration = (
-        params.get("automatic_tau_duration")
-        if params.get("automatic_tau_duration") is not None
-        else True
-    )
-    tau_control_params = params.get("tau_control_params")
-    use_vsl_control = (
-        params.get("use_vsl_control")
-        if params.get("use_vsl_control") is not None
-        else False
-    )
-    control_types = [use_learned_control, use_tau_control, use_vsl_control]
+    const_control_params = params.get("const_control_params")
+    control_types = [use_learned_control, use_const_control]
     if len([control_type for control_type in control_types if control_type]) > 1:
         return False
     if no_merge and use_learned_control:
         return False
-    if no_merge and use_tau_control and automatic_tau_duration:
+    if no_merge and use_const_control and automatic_const_control_duration:
         return False
-    if not use_tau_control and tau_control_params is not None:
+    if not use_const_control and const_control_params is not None:
         return False
-    if use_tau_control and tau_control_params is None:
+    if use_const_control and const_control_params is None:
         return False
 
     return True
@@ -232,24 +268,33 @@ def simulate(
     seconds_per_step = sim_config_params["seconds_per_step"]
 
     use_learned_control = sim_config_params["use_learned_control"]
-    use_tau_control = sim_config_params["use_tau_control"]
+    use_const_control = sim_config_params.get("use_const_control") or False
 
-    if use_tau_control and use_learned_control:
+    if use_const_control and use_learned_control:
         raise ValueError(
             "Only one control scheme can be active at a time. "
             "Please choose either tau or learned control"
         )
 
-    if use_tau_control:
-        tau_control_params = sim_config_params["tau_control_params"]
-        automatic_tau_duration = sim_config_params["automatic_tau_duration"]
-        tau_val = tau_control_params["tau_val"]
-        tau_control_only_rightmost_lane = tau_control_params[
-            "tau_control_only_rightmost_lane"
+    if use_const_control:
+        const_control_params = sim_config_params["const_control_params"]
+        automatic_const_control_duration = sim_config_params[
+            "automatic_const_control_duration"
+        ]
+        const_control_val = const_control_params.get("const_control_val")
+        const_control_val_norm = const_control_params.get("const_control_val_norm")
+        if (const_control_val is not None and const_control_val_norm is not None) or (
+            const_control_val is None and const_control_val_norm is None
+        ):
+            raise ValueError(
+                "Please provide exactly one of 'const_control_val' or 'const_control_val_norm' in const_control_params"
+            )
+        const_control_only_rightmost_lane = const_control_params[
+            "const_control_only_rightmost_lane"
         ]
         # The following is not relevant if automatic_tau_duration=True
-        tau_control_start_time = tau_control_params["tau_control_start_time"]
-        tau_control_duration = tau_control_params["tau_control_duration"]
+        const_control_start_time = const_control_params["const_control_start_time"]
+        const_control_duration = const_control_params["const_control_duration"]
     # RL control params
     if use_learned_control:
         rl_control_params = DEF_RL_CONTROL_PARAMS | sim_config_params.get(
@@ -263,16 +308,20 @@ def simulate(
 
     custom_name_postfix = sim_config_params["custom_name_postfix"]
     sim_config_params["per_lane_control"] = False
-    if not any([use_learned_control, use_tau_control]):
+    if not any([use_learned_control, use_const_control]):
         custom_name_postfix = "no_control"
     elif use_learned_control:
         custom_name_postfix = "rl_control"
         sim_config_params.update(per_lane_control=rl_per_lane_control)
-    elif use_tau_control:
-        custom_name_postfix = f"tau_control_{tau_val}"
-        if tau_control_only_rightmost_lane and not single_lane:
+    elif use_const_control:
+        custom_name_postfix = (
+            f"const_control_{const_control_val}"
+            if const_control_val
+            else f"const_control_norm_{const_control_val_norm}"
+        )
+        if const_control_only_rightmost_lane and not single_lane:
             custom_name_postfix += "_rightmost"
-            sim_config_params.update(per_lane_control=tau_control_only_rightmost_lane)
+            sim_config_params.update(per_lane_control=const_control_only_rightmost_lane)
 
     random_av_switching = sumo_config_params["random_av_switching"]
     random_av_switching_seed = sumo_config_params["random_av_switching_seed"]
@@ -347,11 +396,24 @@ def simulate(
     num_merge_timesteps = 0
     prev_veh_in_edge_after_merge = set()
 
-    # Tau control:
+    # Constant control signal:
     first_merge_veh_entered = False
-    if use_tau_control:
-        norm_default_tau = (env.default_tau - env.min_tau) / (env.max_tau - env.min_tau)
-        norm_tau_val = (tau_val - env.min_tau) / (env.max_tau - env.min_tau)
+
+    default_control_val, min_control_val, max_control_val = get_const_control_params(
+        env
+    )
+    if use_const_control:
+        norm_default_control_val = (default_control_val - min_control_val) / (
+            max_control_val - min_control_val
+        )
+        norm_const_control_val_action = (
+            (
+                (const_control_val - min_control_val)
+                / (max_control_val - min_control_val)
+            )
+            if const_control_val is not None
+            else const_control_val_norm
+        )
 
     at_least_one_waiting = True
     obs, info = env.reset()
@@ -370,25 +432,27 @@ def simulate(
             action_scaled = unsquash_action(action_norm, env.action_space)
             actions = {env.CENTRALIZED_AGENT_NAME: action_scaled}
 
-        elif use_tau_control:
-            norm_tau_profile = np.ones(env.action_space_len) * norm_default_tau
+        elif use_const_control:
+            norm_const_profile = (
+                np.ones(env.action_space_len) * norm_default_control_val
+            )
             if (
                 (first_merge_veh_entered and not last_merge_veh_exited)
-                and automatic_tau_duration
+                and automatic_const_control_duration
             ) or (
-                t >= tau_control_start_time
-                and t <= (tau_control_start_time + tau_control_duration)
-                and not automatic_tau_duration
+                not automatic_const_control_duration
+                and t >= const_control_start_time
+                and t <= (const_control_start_time + const_control_duration)
             ):
-                if tau_control_only_rightmost_lane and not single_lane:
+                if const_control_only_rightmost_lane and not single_lane:
                     rightmost_idx = [0]
                     for cumsum_lanes in env.cumsum_control_segment_lanes[:-1]:
                         rightmost_idx.append(cumsum_lanes)
-                    norm_tau_profile[rightmost_idx] = norm_tau_val
+                    norm_const_profile[rightmost_idx] = norm_const_control_val_action
                 else:
-                    norm_tau_profile[:] = norm_tau_val
+                    norm_const_profile[:] = norm_const_control_val_action
 
-            actions = {env.CENTRALIZED_AGENT_NAME: norm_tau_profile}
+            actions = {env.CENTRALIZED_AGENT_NAME: norm_const_profile}
 
         # Step the environment
         obs, rewards, terminated, truncated, info = env.step(actions)
@@ -445,11 +509,15 @@ def simulate(
     )
 
     if sim_config_params["env_class"] == "SumoEnvCentralizedTau":
-        sim_tau = tau_val if use_tau_control else env.default_tau
+        sim_tau = const_control_val if use_const_control else env.default_tau
     else:
         sim_tau = SumoEnvCentralizedTau.DEF_MIN_TAU
 
     episode_results.update(tau=sim_tau)
+    if use_const_control:
+        episode_results.update(
+            const_control_val=const_control_val, const_control_val_norm=const_control_val_norm, default_control_val=default_control_val
+        )
 
     if num_merge_timesteps > 0:
         merge_time = num_merge_timesteps * seconds_per_step
@@ -579,10 +647,10 @@ def main():
     use_learned_control = [False]
     if alg_checkpoint_path is not None:
         use_learned_control.append(True)
-    use_tau_control = False  # [False, True]
-    tau_control_only_rightmost_lane = False
+    use_const_control = False  # [False, True]
+    const_control_only_rightmost_lane = False
     rl_per_lane_control = PER_LANE_CONTROL
-    automatic_tau_duration = True
+    automatic_const_control_duration = True
     num_control_segments = args.num_control_seg
 
     no_merge = [True, False]
@@ -607,26 +675,29 @@ def main():
     if network_file_name is not None:
         sumo_config_params.update({"network_file_name": network_file_name})
 
-    tau_val = (
+    const_control_val = (
         np.arange(1.6, 2.6, 0.1).round(2).tolist()
-        if not single_lane and not tau_control_only_rightmost_lane
+        if not single_lane and not const_control_only_rightmost_lane
         else list(np.arange(2, 6.5, 0.5))
     )
 
-    tau_control_constants = {
-        "tau_control_only_rightmost_lane": tau_control_only_rightmost_lane,  # True,
-        # The following is not relevant if automatic_tau_duration=True
-        "tau_control_start_time": 200,
-        "tau_control_duration": 100,
+    const_control_constants = {
+        "const_control_only_rightmost_lane": const_control_only_rightmost_lane,  # True,
+        # The following is not relevant if automatic_const_control_duration=True
+        "const_control_start_time": 200,
+        "const_control_duration": 100,
     }
-    if isinstance(tau_val, list):
-        tau_control_params = [None] + [
-            tau_control_constants | {"tau_val": tau} for tau in tau_val
+    if isinstance(const_control_val, list):
+        const_control_params = [None] + [
+            const_control_constants | {"const_control_val": control_val}
+            for control_val in const_control_val
         ]
-    elif use_tau_control:
-        tau_control_params = tau_control_constants | {"tau_val": tau_val}
+    elif use_const_control:
+        const_control_params = const_control_constants | {
+            "const_control_val": const_control_val
+        }
     else:
-        tau_control_params = None
+        const_control_params = None
 
     if use_learned_control and alg_checkpoint_path is None:
         raise ValueError(
@@ -661,11 +732,11 @@ def main():
     sim_config_params = DEF_SIM_CONFIG_PARAMS | {
         "sumo_seed": sumo_seed,
         "use_learned_control": use_learned_control,
-        "use_tau_control": use_tau_control,
+        "use_const_control": use_const_control,
         "num_simulation_steps_per_step": num_simulation_steps_per_step,
         "simulation_time": simulation_time,
-        "automatic_tau_duration": automatic_tau_duration,
-        "tau_control_params": tau_control_params,
+        "automatic_const_control_duration": automatic_const_control_duration,
+        "const_control_params": const_control_params,
         "rl_control_params": rl_control_params,
         "scenario_params": scenario_params,
         "env_config_overrides": env_config_overrides,
