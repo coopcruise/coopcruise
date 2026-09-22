@@ -6,7 +6,7 @@ channels:
 dependencies:
   - pip
   - python=3.10.13
-  - setuptools
+  - setuptools=70.3.0  # Ray 2.7 imports pkg_resources and pkg_resources._vendor; both are gone in newer setuptools
   - pip:
       - debugpy==1.8.0
       - dm-tree==0.1.8
