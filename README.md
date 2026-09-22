@@ -142,7 +142,7 @@ python evaluate_control_rl.py \
   --debug
 ```
 
-For the above example, `--auto_results_dir` writes to `results/SumoEnvCentralizedTau_merge_flow_percent_50_multi_lane_explore/`. Aggregate the boundary-aware speed improvement against the human-driven runs in that directory:
+For the above example, `--auto_results_dir` writes to `results/SumoEnvCentralizedTau_merge_flow_percent_50_multi_lane_explore/`. To aggregate the boundary-aware speed improvement against the human-driven runs in that directory, run:
 
 ```bash
 python simulation_analysis.py \
@@ -151,7 +151,7 @@ python simulation_analysis.py \
 
 The script prints and saves mean relative speed change by ACC penetration, with a 95% confidence interval, under `results/SumoEnvCentralizedTau_merge_flow_percent_50_multi_lane_explore/Multi-lane/`.
 
-Repeat the train and evaluate commands with `--env_class SumoEnvCentralizedMinGap` for distance headway, or `SumoEnvCentralizedVel` for the RL speed-limit baseline. Those evaluations land in their own `results/` directories.
+Repeat the train and evaluate commands with `--env_class SumoEnvCentralizedMinGap` for distance headway, or `--env_class SumoEnvCentralizedVel` for the RL speed-limit baseline. Those evaluations land in their own `results/` directories.
 
 ### Full paper grid
 
