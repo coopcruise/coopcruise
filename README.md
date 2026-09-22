@@ -142,7 +142,7 @@ python evaluate_control_rl.py \
   --debug
 ```
 
-For this example, `--auto_results_dir` writes to `results/SumoEnvCentralizedTau_merge_flow_percent_50_multi_lane_explore/`. Aggregate the boundary-aware speed improvement against the human-driven runs in that directory:
+For the above example, `--auto_results_dir` writes to `results/SumoEnvCentralizedTau_merge_flow_percent_50_multi_lane_explore/`. Aggregate the boundary-aware speed improvement against the human-driven runs in that directory:
 
 ```bash
 python simulation_analysis.py \
