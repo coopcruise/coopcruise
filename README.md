@@ -4,7 +4,7 @@ This repository contains the SUMO and RLlib code used to train and evaluate the 
 
 > Yaron Veksler, Sharon Hornstein, Han Wang, Maria Laura Delle Monache, and Daniel Urieli.
 > **Highway Congestion Reduction through Reinforcement Learning Based Eulerian Headway Control.**
-> IEEE International Conference on Intelligent Transportation Systems (ITSC), 2026. To appear.
+> 2026 IEEE 29th International Conference on Intelligent Transportation Systems (ITSC), 2026. To appear.
 > arXiv: [2412.02520](https://arxiv.org/abs/2412.02520).
 
 - Project site (overview, figures, and example videos): [https://coopcruise.github.io](https://coopcruise.github.io)
