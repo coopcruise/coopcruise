@@ -1,6 +1,6 @@
 # Highway Congestion Reduction through Reinforcement Learning Based Eulerian Headway Control
 
-This repository contains the SUMO and RLlib code used to train and evaluate the controllers in our ITSC 2026 paper:
+This repository contains the code (including SUMO and RLlib) used to train and evaluate the controllers in our ITSC 2026 paper:
 
 > Yaron Veksler, Sharon Hornstein, Han Wang, Maria Laura Delle Monache, and Daniel Urieli.
 > **Highway Congestion Reduction through Reinforcement Learning Based Eulerian Headway Control.**
@@ -14,7 +14,7 @@ The proceedings version is forthcoming. Until a DOI is available, please cite th
 
 ## Background
 
-Highway congestion remains one of the most pressing challenges in modern transportation. Highway flow through merge-bottlenecks can decrease significantly in high density traffic, creating stop-and-go waves that propagate upstream. Numerous lane-changes increase vehicle interactions and create additional slow-downs. Reducing road density helps vehicles rearrange among the lanes with reduced negative effect on traffic. Current roadside variable speed limits affect density only indirectly, update a few times per hour, and depend on inconsistent driver compliance. Vehicle-level (Lagrangian) controllers can be reactive and compliant, but on a multi-lane road the useful action often depends on whether a neighboring driver will actually change lanes.
+Highway congestion remains a pressing challenge in modern transportation. Highway flow through merge-bottlenecks can decrease significantly in high density traffic, creating stop-and-go waves that propagate upstream. Numerous lane-changes increase vehicle interactions and create additional slow-downs. Reducing road density near the bottleneck helps vehicles rearrange among the lanes with reduced negative effect on traffic. Currently deployed roadside variable speed limits affect density only indirectly, update a few times per hour, and depend on inconsistent driver compliance. Vehicle-level (Lagrangian) controllers can be reactive and compliant, but on a multi-lane road the useful action often depends on whether a neighboring driver will actually change lanes.
 
 This work keeps the decision at the road-segment level and uses vehicles equipped with adaptive cruise control (ACC) as the actuators. A reinforcement-learning policy reads average speed and density around the bottleneck and broadcasts one headway command to every connected ACC vehicle in each controlled segment. Commands refresh every 2.5 seconds. Two command types are trained:
 
