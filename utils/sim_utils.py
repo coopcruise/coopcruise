@@ -22,7 +22,7 @@ from utils.i24_utils import get_main_road_west_edges
 DEF_SUMO_CONFIG = {
     "scenario_dir": "scenarios/single_junction/test_calibrated",
     "od_flow_file_name": "edge_flows_interval_8400_taz_reduced",
-    "network_file_name": "short_merge_lane_separate_exit_lane.net.xml",
+    "network_file_name": "short_merge_lane_separate_exit_lane_disconnected_merge_lane.net.xml",
     "no_merge": False,
     "single_lane": False,
     "change_lc_av_only": False,

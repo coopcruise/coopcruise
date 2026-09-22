@@ -7,7 +7,7 @@ from utils.metrics_utils import save_xml_element
 WORKING_DIR = Path(__file__).parents[1]
 # SCENARIO_DIR = "scenarios/reduced_junctions"
 SCENARIO_DIR = "scenarios/single_junction"
-OD_FILE = "edge_flows_interval_8400_taz_reduced.xml"
+OD_FILE = "edge_flows_interval_8400_taz_reduced_2_sec.xml"
 PERIOD_TIME = (240, 8400)  # sec
 OD_OSCILLATIONS = {("taz_4", "taz_reduced_end"): {"high_scale": 1.2, "low_scale": 0}}
 WARM_UP_TIME = 240

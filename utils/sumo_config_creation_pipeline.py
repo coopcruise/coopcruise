@@ -118,7 +118,7 @@ DEF_CONFIG = {
 DEF_SIMPLIFIED_CONFIG = {
     "scenario_dir": "scenarios/single_junction",
     "od_flow_file_name": "edge_flows_interval_8400_taz_reduced",
-    "network_file_name": "short_merge_lane_separate_exit_lane.net.xml",
+    "network_file_name": "short_merge_lane_separate_exit_lane_disconnected_merge_lane.net.xml",
     "taz_file_name": "districts.taz.simplified_junctions.xml",
     "output_dir": "scenarios/single_junction/test_calibrated",
     "single_lane": True,
@@ -356,8 +356,6 @@ def get_sumo_config_creation_params(simplified_config_overrides: dict):
 
     od_file_name = get_sumo_config_od_file_stem(simplified_config_overrides) + ".xml"
 
-    # network_file_name = "short_merge_lane.net.xml"
-    # network_file_name = "short_merge_lane_exit_connection_fix.net.xml"
     network_file_name = simplified_config["network_file_name"]
     taz_file_name = simplified_config["taz_file_name"]
     output_dir = simplified_config["output_dir"]
@@ -456,7 +454,7 @@ if __name__ == "__main__":
     simplified_config = {
         "scenario_dir": "scenarios/single_junction",
         "od_flow_file_name": "edge_flows_interval_8400_taz_reduced",
-        "network_file_name": "short_merge_lane_separate_exit_lane.net.xml",
+        "network_file_name": "short_merge_lane_separate_exit_lane_disconnected_merge_lane.net.xml",
         "taz_file_name": "districts.taz.simplified_junctions.xml",
         "output_dir": "scenarios/single_junction/test_calibrated",
         "single_lane": True,

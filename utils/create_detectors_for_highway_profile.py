@@ -8,10 +8,8 @@ from utils.i24_utils import get_main_road_west_edges
 from utils.sumo_utils import get_edge_length
 
 WORKING_DIR = Path(__file__).parents[1]
-# SCENARIO_DIR = "scenarios/maryam_scenario_full"
-# NETWORK_FILE = "final_net.net.xml"
-SCENARIO_DIR = "scenarios/reduced_junctions"
-NETWORK_FILE = "new_final_net.net.xml"
+SCENARIO_DIR = "scenarios/single_junction"
+NETWORK_FILE = "short_merge_lane_separate_exit_lane_disconnected_merge_lane.net.xml"
 
 DEF_DETECTOR_RESULTS_OUTPUT_FILE_NAME = "speed_profile_detector_results.xml"
 DEF_SEGMENT_NOMINAL_LENGTH = 100  # m

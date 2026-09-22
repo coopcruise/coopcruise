@@ -10,8 +10,7 @@ from utils.metrics_utils import save_xml_element
 WORKING_DIR = Path(__file__).parents[1]
 # SCENARIO_DIR = "scenarios/reduced_junctions"
 SCENARIO_DIR = "scenarios/single_junction"
-# NETWORK_FILE = "new_final_net.net.xml"
-NETWORK_FILE = "short_merge_lane.net.xml"
+NETWORK_FILE = "short_merge_lane_separate_exit_lane_disconnected_merge_lane.net.xml"
 TAZ_FILE = "districts.taz.simplified_junctions.xml"
 # SCENARIO_DIR = "scenarios/maryam_scenario_full"
 # NETWORK_FILE = "final_net.net.xml"
