@@ -60,7 +60,7 @@ The experiments use Python 3.10, Ray 2.7, PyTorch 2.1, Gymnasium 0.28, and Eclip
 
 ```yaml
 variables:
-  PYTHONPATH: /absolute/path/to/coopcruise
+  PYTHONPATH: $PYTHONPATH:/absolute/path/to/coopcruise
 ```
 
 3. Create and activate the environment:
