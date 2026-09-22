@@ -1,13 +1,13 @@
 # Highway Congestion Reduction through Reinforcement Learning Based Eulerian Headway Control
 
-This repository contains the SUMO and RLlib code used to train and evaluate the controllers in:
+This repository contains the SUMO and RLlib code used to train and evaluate the controllers in our ITSC 2026 paper:
 
 > Yaron Veksler, Sharon Hornstein, Han Wang, Maria Laura Delle Monache, and Daniel Urieli.
 > **Highway Congestion Reduction through Reinforcement Learning Based Eulerian Headway Control.**
 > 2026 IEEE 29th International Conference on Intelligent Transportation Systems (ITSC), 2026. To appear.
 > arXiv: [2412.02520](https://arxiv.org/abs/2412.02520).
 
-- Project site (overview, figures, and example videos): [https://coopcruise.github.io](https://coopcruise.github.io)
+- Project website (overview, figures, and example videos): [https://coopcruise.github.io](https://coopcruise.github.io)
 - Paper: [https://arxiv.org/abs/2412.02520](https://arxiv.org/abs/2412.02520)
 
 The proceedings version is forthcoming. Until a DOI is available, please cite the BibTeX entry below.
@@ -106,7 +106,7 @@ Training runs 10,000 PPO iterations. It writes `checkpoint_best` (highest mean e
 
 ### One scenario
 
-Time-headway control, medium merge, 100% connected ACC:
+The following is an example of launching training run for Time-headway control, medium merge, 100% connected ACC:
 
 ```bash
 python train_ppo_centralized.py \
@@ -123,7 +123,7 @@ python train_ppo_centralized.py \
   --results_dir ./ray_results
 ```
 
-Evaluate that checkpoint on the paper's 30 seeds. The same call also simulates the human-driven baseline (the policy is turned off) and a no-merge reference. `--auto_results_dir` names the output from the checkpoint configuration. Add `--exploit` to evaluate the mean action. The batch scripts in the next section do this for every saved checkpoint.
+The following example evaluates that checkpoint on the paper's 30 seeds. The same call also simulates the human-driven baseline (the policy is turned off) and a no-merge reference. `--auto_results_dir` names the output from the checkpoint configuration. Add `--exploit` to evaluate the mean action. The batch scripts in the next section do this for every saved checkpoint.
 
 ```bash
 python evaluate_control_rl.py \
