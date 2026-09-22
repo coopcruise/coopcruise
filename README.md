@@ -100,6 +100,8 @@ Pass every flag below. The first four override the script defaults.
 
 `--av_percent` is the connected-ACC penetration: `20`, `60`, or `100`.
 
+`--inflow_percent` scales the mainline demand and leaves the merge demand unchanged. The default is `100`, about 1,800 vehicles/hour/lane, which is the demand used in the paper. Lower values are for exploration. `--inflow_percent 80` is about 1,440 vehicles/hour/lane. Evaluation reads the value from the checkpoint. When it is not 100, result directory names include `inflow_percent_<value>`.
+
 Training runs 10,000 PPO iterations. It writes `checkpoint_best` (highest mean episode reward) and a checkpoint every 250 iterations under `--results_dir`. Full retraining of the 3 controllers × 3 inflows × 3 penetration rates is 27 runs and is compute-heavy. The examples use `./ray_results` so the checkpoints stay next to the repository.
 
 ### One scenario

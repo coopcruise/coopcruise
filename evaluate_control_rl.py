@@ -30,6 +30,7 @@ from train_ppo_centralized import (
     WARM_UP_TIME,
     NUM_CONTROL_SEGMENTS,
     START_POLICY_AFTER_WARM_UP,
+    INFLOW_PERCENT,
 )
 
 MERGE_FLOW_PERCENT = 100
@@ -188,6 +189,13 @@ if __name__ == "__main__":
     else:
         merge_flow_percent = MERGE_FLOW_PERCENT
 
+    if "inflow_percent_" in sumo_config_file_name:
+        inflow_percent = int(
+            sumo_config_file_name.split("inflow_percent_")[-1].split("_")[0]
+        )
+    else:
+        inflow_percent = INFLOW_PERCENT
+
     num_simulation_steps_per_step = (
         env_config.get("num_simulation_steps_per_step") or NUM_SIMULATION_STEPS_PER_STEP
     )
@@ -210,8 +218,13 @@ if __name__ == "__main__":
         const_control_str = "_const_control" if use_const_control_parse else ""
         exploit_str = "_exploit" if exploit and not use_const_control_parse else "_explore"
         merge_inflow_str = f"_merge_flow_percent_{merge_flow_percent}"
+        inflow_str = (
+            f"_inflow_percent_{inflow_percent}"
+            if inflow_percent != INFLOW_PERCENT
+            else ""
+        )
         perturb_str = "_perturb" if perturb else ""
-        results_dir_name = f"{prefix_str}{env_class}{control_type_str}{const_control_str}{merge_inflow_str}{lane_type_str}{perturb_str}{exploit_str}"
+        results_dir_name = f"{prefix_str}{env_class}{control_type_str}{const_control_str}{merge_inflow_str}{inflow_str}{lane_type_str}{perturb_str}{exploit_str}"
 
     scenario_dir = Path("scenarios/single_junction") / results_dir_name
 
@@ -223,6 +236,7 @@ if __name__ == "__main__":
         "av_percent": av_percent,
         "warm_up_time": warm_up_time,
         "merge_flow_percent": merge_flow_percent,
+        "inflow_percent": inflow_percent,
         "random_av_switching": random_av_switching,
         "random_av_switching_seed": random_av_switching_seed,
     }

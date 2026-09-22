@@ -10,6 +10,7 @@ from utils.analysis_utils import (
 )
 from train_ppo_centralized import (
     INFLOW_TIME_HEADWAY,
+    INFLOW_PERCENT,
     AV_PERCENT,
     SINGLE_LANE,
     CHANGE_LC_AV_ONLY,
@@ -152,6 +153,14 @@ def extract_params(results_dir: str, ref_results_dir: str | None = None):
                 int(subdir.split("merge_flow_percent_")[1].split("_")[0])
                 if "merge_flow_percent" in subdir
                 else MERGE_FLOW_PERCENT
+                for subdir in subdirs
+            ]
+        ),
+        "inflow_percent": set(
+            [
+                int(subdir.split("inflow_percent_")[1].split("_")[0])
+                if "inflow_percent_" in subdir
+                else INFLOW_PERCENT
                 for subdir in subdirs
             ]
         ),

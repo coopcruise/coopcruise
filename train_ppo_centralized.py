@@ -27,6 +27,7 @@ from ray.train.constants import _get_defaults_results_dir
 
 NUM_ROLLOUT_WORKERS = 10
 INFLOW_TIME_HEADWAY = 2
+INFLOW_PERCENT = 100
 AV_PERCENT = 100
 
 SINGLE_LANE = False  # True
@@ -125,6 +126,7 @@ DEF_SUMO_CONFIG_PARAMS = {
     "default_tau": DEFAULT_TAU,
     "keep_veh_names_no_merge": KEEP_VEH_NAMES_NO_MERGE,
     "inflow_time_headway": INFLOW_TIME_HEADWAY,
+    "inflow_percent": INFLOW_PERCENT,
     "human_speed_std_0": HUMAN_SPEED_STD_0,
     "random_av_switching": RANDOM_AV_SWITCHING,
     "random_av_switching_seed": RANDOM_AV_SWITCHING_SEED,
@@ -194,6 +196,16 @@ def add_parser_simulation_params(parser: argparse.ArgumentParser):
         type=int,
         default=MERGE_FLOW_PERCENT,
         help="Percent of maximal flow (vehicles / hour) to use for merging vehicles.",
+    )
+
+    parser.add_argument(
+        "--inflow_percent",
+        type=int,
+        default=INFLOW_PERCENT,
+        help=(
+            "Percent of the scenario mainline demand. "
+            "The paper uses 100. Lower values are for exploration and do not scale the merge."
+        ),
     )
 
     parser.add_argument(
@@ -331,6 +343,7 @@ if __name__ == "__main__":
         av_percent = args.av_percent
         num_control_seg = args.num_control_seg
         merge_flow_percent = args.merge_flow_percent
+        inflow_percent = args.inflow_percent
         simulation_time = args.sim_time
         random_seed = args.random_seed
         results_dir = args.results_dir
@@ -354,6 +367,7 @@ if __name__ == "__main__":
             "single_lane": single_lane,
             "av_percent": av_percent,
             "merge_flow_percent": merge_flow_percent,
+            "inflow_percent": inflow_percent,
             "random_av_switching_seed": random_av_switching_seed,
             "warm_up_time": warm_up_time,
         }
@@ -489,6 +503,11 @@ if __name__ == "__main__":
                 if not merge_flow_percent == MERGE_FLOW_PERCENT
                 else ""
             )
+            inflow_percent_str = (
+                f"_inflow_percent_{inflow_percent}"
+                if not inflow_percent == INFLOW_PERCENT
+                else ""
+            )
             per_lane_str = "_per_lane" if per_lane_control else ""
             right_lane_str = "_right_lane" if right_lane_control else ""
             num_control_seg_str = (
@@ -518,7 +537,7 @@ if __name__ == "__main__":
                 + f"{num_remove_start_state_segments_str}{num_remove_end_state_segments_str}"
                 + f"{num_merge_segments_str}"
                 + f"_{lane_str}_{av_percent_str}"
-                + f"{num_control_seg_str}{per_lane_str}{right_lane_str}{merge_flow_percent_str}"
+                + f"{num_control_seg_str}{per_lane_str}{right_lane_str}{merge_flow_percent_str}{inflow_percent_str}"
                 + f"_{seed_str}_{timestr}"
             )
             if not os.path.exists(results_dir):

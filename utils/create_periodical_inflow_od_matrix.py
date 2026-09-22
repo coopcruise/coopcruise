@@ -18,6 +18,7 @@ def create_periodical_od(
     period_time: int | tuple,
     od_oscillations: dict[tuple, dict[str, float]],
     warm_up_time: int = 0,
+    inflow_scale: float = 1.0,
 ):
     # Assume the OD is for the entire period (only one interval).
     periodic_od_root = deepcopy(od_root)
@@ -67,6 +68,9 @@ def create_periodical_od(
                             if num_periods % 2 == 0
                             else od_oscillations[from_to]["low_scale"]
                         )
+                else:
+                    # Scale highway inflow. Merge demand is handled by od_oscillations.
+                    multiplier = inflow_scale
 
                 od_pair.set("count", str(int(rel_duration * count * multiplier)))
             periodic_od_root.append(new_interval)
@@ -120,6 +124,7 @@ def create_and_save_periodical_od(
     warm_up_time: int = 0,
     output_dir: Path | str = None,
     output_suffix: str = None,
+    inflow_scale: float = 1.0,
 ):
     # %% load OD and TAZ files
     od_root = ET.parse(od_file_path).getroot()
@@ -128,7 +133,7 @@ def create_and_save_periodical_od(
         od_file_path, period_time, warm_up_time, output_dir, output_suffix
     )
     periodic_od = create_periodical_od(
-        od_root, period_time, od_oscillations, warm_up_time
+        od_root, period_time, od_oscillations, warm_up_time, inflow_scale
     )
     save_xml_element(
         periodic_od, periodic_od_path, encoding="utf-8", xml_declaration=True

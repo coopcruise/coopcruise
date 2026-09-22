@@ -62,6 +62,9 @@ DEF_PERIODIC_FLOW_CONFIG = {
     # During the warm-up time, the flows of the origin-destination pairs defined
     # in od_oscillations will be 0.
     "warm_up_time": 0,
+    # inflow_scale applies to origin-destination pairs that are not in
+    # od_oscillations, which is the mainline demand. 1.0 keeps that demand.
+    "inflow_scale": 1.0,
 }
 
 DEF_CONFIG = {
@@ -128,6 +131,7 @@ DEF_SIMPLIFIED_CONFIG = {
     "keep_veh_names_no_merge": True,
     "default_tau": None,
     "inflow_time_headway": 2,
+    "inflow_percent": 100,
     "change_lc_av_only": False,
     "no_lc": False,
     "no_lc_right": True,
@@ -181,6 +185,7 @@ def create_sumo_config(config: dict):
             periodic_flow_config["warm_up_time"],
             output_dir=output_dir,
             output_suffix=output_suffix,
+            inflow_scale=periodic_flow_config.get("inflow_scale", 1.0),
         )
     additional_files: set = set(config.get("additional_files", []))
 
@@ -288,6 +293,10 @@ def get_sumo_config_output_suffix(simplified_config_overrides):
     if not merge_flow_percent == 100:
         output_suffix = f"_merge_flow_percent_{merge_flow_percent}" + output_suffix
 
+    inflow_percent = simplified_config.get("inflow_percent", 100)
+    if not inflow_percent == 100:
+        output_suffix = f"_inflow_percent_{inflow_percent}" + output_suffix
+
     if no_merge and keep_veh_names_no_merge:
         output_suffix += "_no_merge"
 
@@ -387,6 +396,12 @@ def get_sumo_config_creation_params(simplified_config_overrides: dict):
                 flow_key: flow_val * merge_flow_percent / 100
                 for flow_key, flow_val in flow_vals.items()
             }
+
+    inflow_percent = simplified_config.get("inflow_percent", 100)
+    assert inflow_percent >= 0, (
+        f"inflow_percent (requested value: {inflow_percent}) must not be negative."
+    )
+    periodic_flow_config_overrides["inflow_scale"] = inflow_percent / 100
 
     # We can replace the code below with setting merge_flow_percent=0
     # before the code above when no_merge=True
