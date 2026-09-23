@@ -622,6 +622,16 @@ def run_all_simulations(
     perturb=False,
 ):
     sim_configs = get_sim_configs(sumo_config_params, sim_config_params)
+    # Create shared SUMO config/route files once in the parent process so parallel
+    # workers do not race on writing the same files during env initialization.
+    for sim_config in sim_configs:
+        sumo_params = sim_config["sumo_config_params_update"]
+        get_centralized_env_config(
+            sumo_params,
+            sim_config["sim_config_params"],
+            perturb=perturb,
+            perturb_seed=(DEF_SUMO_CONFIG | sumo_params)["random_av_switching_seed"],
+        )
     sim_queue = multiprocessing.Queue() if num_processes > 0 else queue.Queue()
     add_sims_to_queue(sim_queue, sim_configs)
     # creating processes
