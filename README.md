@@ -239,6 +239,8 @@ python evaluate_control_rl.py \
   --debug
 ```
 
+The GUI opens zoomed out to the whole network, so zoom in to the second intersection from the end (Exit 59, the merge bottleneck) to see the vehicles. Blue vehicles are connected ACC in the controlled segment farther from the bottleneck; orange vehicles are connected ACC in the controlled segment next to it. Green vehicles are connected ACC outside those segments, and grey vehicles are human-driven.
+
 ### Traditional variable speed limits
 
 Traditional VSL is a constant speed on the two controlled segments, applied while merging vehicles are on the on-ramp. The constant is chosen by a grid search in 10% steps of the speed limit. Prefer `summarize_rl_results_av_seed_const.sh` on a directory of `SumoEnvCentralizedVel` checkpoints (see Batch evaluation). For a manual sweep on one checkpoint:
