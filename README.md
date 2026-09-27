@@ -216,7 +216,9 @@ python simulation_analysis.py \
     SumoEnvCentralizedVel_merge_flow_percent_50_multi_lane_explore
 ```
 
-The script prints and saves mean relative speed change by ACC penetration, with a 95% confidence interval, under each `results/.../Multi-lane/` directory (and an overlaid comparison next to a combined `results/` name). Repeat with `merge_flow_percent_25` and `merge_flow_percent_100` for the light and heavy inflows.
+The script saves **`performance.json`** and a plot under each `results/.../Multi-lane/` directory (and an overlaid comparison under `results/<dir1>_vs_<dir2>/...` when you pass multiple `--results_dir` values). Repeat with `merge_flow_percent_25` and `merge_flow_percent_100` for the light and heavy inflows.
+
+**What the plot shows:** For each ACC penetration on the x-axis, the y-value is the **mean relative speed change [%]** versus the **human-driven baseline** in the same results tree: merge inflow on, no controller (`..._no_control_...` leaves), matched AV-assignment seeds. Speed is boundary-aware (`travel_distance / total_time`, so queueing before the network counts as zero speed). Error bars are **95% confidence intervals** over the evaluation replicates (`--num_tests` / `av_switch_seed_*`). In **`performance.json`**, each penetration has `mean` and a single `std` field (standard error of the mean across seeds—not the full ± pair). The interval is symmetric: **mean ± 1.96 × std** (same half-width as the plot error bars). If only one penetration was evaluated, you get one such mean/`std` pair until you add the other penetration runs.
 
 ### Single-checkpoint evaluation
 
