@@ -89,7 +89,7 @@ Pass every flag below. The first four override the script defaults.
 | `--random_seed` | `0` | unset | SUMO seed and PPO seed. Evaluation still randomizes the ACC subset |
 | `--num_control_seg` | `2` | `2` | Two controlled segments immediately upstream of the bottleneck |
 | `--sim_time` | `500` | `500` | Episode length in seconds |
-| `--num_workers` | `10` | `10` | Parallel rollout workers. Lower this if you have fewer cores |
+| `--num_workers` | `10` | `10` | Ray RLlib rollout workers during **training** only. Lower this if you have fewer cores |
 
 `--merge_flow_percent` is the merge inflow as a percentage of the on-ramp demand in the scenario file. With the 50-second multi-lane merge used here, the paper inflows are:
 
@@ -157,7 +157,9 @@ done
 
 This is the evaluation path used for the paper results. Two shell scripts walk a training directory, find every `checkpoint_best`, and call `evaluate_control_rl.py`. Scenario settings such as warm-up, inflow, and penetration are read from the checkpoint, so the paper flags do not need to be repeated. Run them from the repository root.
 
-Each script evaluates one checkpoint at a time inside a single process (`--num_workers 0`) and keeps up to 10 of those evaluations running at once. Each evaluation uses 30 seeds and `--random_seed 0`. A checkpoint is skipped when its run-directory name does not contain `av_<percent>`, which the trainer includes for the runs above. Ctrl-C stops the script and the evaluations it launched.
+The batch scripts parallelize **checkpoints**. For each `checkpoint_best` under the training tree, the shell launches a background `evaluate_control_rl.py` and keeps at most 10 of those Python processes running at once. Each job uses `--num_workers 0`, so all `--num_tests` SUMO episodes for that checkpoint run **sequentially in one process**. That flag on `evaluate_control_rl.py` sets how many **stdlib multiprocessing** workers pull SUMO jobs from a queue (default `10` if you omit it).
+
+Each job uses `--num_tests 30` (ACC-assignment seeds `0 … 29`) and `--random_seed 0`. The fixed seed pins SUMO and the policy RNG; the 30 replicates vary only in which vehicles are assigned connected ACC. If the parent run folder name lacks `av_<percent>`, that checkpoint is skipped with a warning because penetration is parsed from that substring. Ctrl-C stops the script and every evaluation process it started.
 
 `summarize_rl_results_av_seed.sh` evaluates the learned policy. Each call also records the human-driven baseline (policy off) and a no-merge reference. `--auto_results_dir` names the output from the checkpoint configuration. Add `--exploit` to evaluate the mean action.
 
@@ -233,6 +235,8 @@ python evaluate_control_rl.py \
   --random_seed 0 \
   --auto_results_dir
 ```
+
+On `evaluate_control_rl.py`, `--num_workers` is the number of **multiprocessing** workers for parallel SUMO episodes (`0` = one process, run episodes one after another). It is unrelated to Ray RLlib’s training rollout workers. Raise it above `0` to speed up a long single-checkpoint run; the paper batch path keeps it at `0` and relies on the shell script to run many checkpoints at once.
 
 To watch a single run in the SUMO GUI:
 

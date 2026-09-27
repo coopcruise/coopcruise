@@ -118,7 +118,7 @@ def create_eval_parser():
         "--num_workers",
         type=int,
         default=NUM_ROLLOUT_WORKERS,
-        help="Number of parallel rollout workers.",
+        help="Number of multiprocessing workers for parallel SUMO episodes.",
     )
 
     parser.add_argument(
