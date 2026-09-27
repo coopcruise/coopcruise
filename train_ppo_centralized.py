@@ -8,10 +8,9 @@ import tempfile
 import numpy as np
 from ray.rllib.algorithms.ppo.ppo import PPO, PPOConfig
 from ray.rllib.algorithms.algorithm import Algorithm
-from sumo_centralized_envs_new import (
-    SumoEnvCentralizedTau,
-    SumoEnvCentralizedVel,
-    SumoEnvCentralizedMinGap,
+from utils.centralized_env_registry import (
+    ENV_CLS_STR_OPTIONS,
+    get_env_class_from_str,
 )
 from ray.tune.logger import UnifiedLogger
 from utils.sim_utils import get_centralized_env_config
@@ -58,12 +57,7 @@ LC_PARAMS = (
     None  # dict(lcKeepRight=0, lcAssertive=2.5, lcSpeedGain=5, lcImpatience=0.7)
 )
 
-ENV_CLS_STR = "SumoEnvCentralizedTau"
-ENV_CLS_STR_OPTIONS = [
-    "SumoEnvCentralizedTau",
-    "SumoEnvCentralizedVel",
-    "SumoEnvCentralizedMinGap",
-]
+ENV_CLS_STR = "SumoEnvCentralizedTimeHeadway"
 
 DEFAULT_TAU = None
 RANDOM_AV_SWITCHING = True
@@ -151,17 +145,6 @@ DEF_SIM_CONFIG_PARAMS = {
 def env_creator_template(config, env_class):
     # This allows access to additional parameters, such as worker_index in the environment config
     return env_class(config)  # Return a gymnasium.Env instance.
-
-
-def get_env_class_from_str(env_class_str):
-    if env_class_str == "SumoEnvCentralizedTau":
-        return SumoEnvCentralizedTau
-    elif env_class_str == "SumoEnvCentralizedVel":
-        return SumoEnvCentralizedVel
-    elif env_class_str == "SumoEnvCentralizedMinGap":
-        return SumoEnvCentralizedMinGap
-    else:
-        raise ValueError(f"env_class argument must be one of: {ENV_CLS_STR_OPTIONS}")
 
 
 def policy_mapping_function(agent_id: str, episode, worker, **kwargs):

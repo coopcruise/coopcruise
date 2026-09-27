@@ -18,12 +18,13 @@ Highway congestion remains a pressing challenge in modern transportation. Highwa
 
 This work proposes a practical Eulerian (road-segment based) controller and uses vehicles equipped with adaptive cruise control (ACC) as the actuators. A reinforcement-learning policy reads average speed and density around the bottleneck and broadcasts one desired headway command for each controlled segment, to which every connected ACC vehicle adheres. Commands refresh every 2.5 seconds. Two command types are trained:
 
-| Controller | Environment class | Command range |
+| Controller (paper) | Environment class | Command range |
 | --- | --- | --- |
-| Time headway | `SumoEnvCentralizedTau` | 1.5–6 s |
-| Distance headway | `SumoEnvCentralizedMinGap` | 0–30 m |
+| TimeHeadway | `SumoEnvCentralizedTimeHeadway` | 1.5–6 s |
+| DistanceHeadway | `SumoEnvCentralizedDistanceHeadway` | 0–30 m |
+| SpeedLimit | `SumoEnvCentralizedSpeedLimit` | 0–31.29 m/s (70 mph) |
 
-`SumoEnvCentralizedVel` trains the dynamic RL speed-limit baseline (commands in \([0, 31.29]\) m/s, the 70 mph highway limit). A separate constant-speed sweep approximates traditional roadside variable speed limits.
+`SumoEnvCentralizedSpeedLimit` trains the dynamic RL speed-limit baseline. A separate constant-speed sweep approximates traditional roadside variable speed limits (Traditional VSL in the paper figures).
 
 The scenario is a 2 km, four-lane road with a merging road in SUMO, with IDM car-following and about 1,000 vehicles per 500-second episode. Mainline inflow is at maximum capacity of 1,800 vehicles/hour/lane. Merging traffic starts after a 60-second warm-up and lasts 50 seconds. The reported grid covers merge inflows of about 7, 14, and 30 vehicles/minute and connected-ACC penetration of 20%, 60%, and 100%. Each configuration is evaluated on 30 random seeds.
 
@@ -110,7 +111,7 @@ The following is an example of launching a training run for time-headway control
 
 ```bash
 python train_ppo_centralized.py \
-  --env_class SumoEnvCentralizedTau \
+  --env_class SumoEnvCentralizedTimeHeadway \
   --av_percent 100 \
   --merge_flow_percent 50 \
   --warm_up 60 \
@@ -123,7 +124,7 @@ python train_ppo_centralized.py \
   --results_dir ./ray_results
 ```
 
-`<RUN_DIRECTORY>` below is the `PPO_SumoEnvCentralizedTau_...` folder created under `./ray_results`. Evaluate with the batch scripts in the next sections (paper path), or with a single-checkpoint call later in this README. Repeat training with `--env_class SumoEnvCentralizedMinGap` for distance headway, or `--env_class SumoEnvCentralizedVel` for the RL speed-limit baseline.
+`<RUN_DIRECTORY>` below is the `PPO_SumoEnvCentralizedTimeHeadway_...` folder created under `./ray_results`. Evaluate with the batch scripts in the next sections (paper path), or with a single-checkpoint call later in this README. Repeat training with `--env_class SumoEnvCentralizedDistanceHeadway` for distance headway, or `--env_class SumoEnvCentralizedSpeedLimit` for the RL speed-limit baseline.
 
 ### Full paper grid
 
@@ -139,7 +140,7 @@ COMMON=(
   --results_dir ./ray_results
 )
 
-for ENV in SumoEnvCentralizedTau SumoEnvCentralizedMinGap SumoEnvCentralizedVel; do
+for ENV in SumoEnvCentralizedTimeHeadway SumoEnvCentralizedDistanceHeadway SumoEnvCentralizedSpeedLimit; do
   for AV in 20 60 100; do
     for FLOW in 25 50 100; do
       python train_ppo_centralized.py \
@@ -175,7 +176,7 @@ Optional arguments:
 bash summarize_rl_results_av_seed.sh ./ray_results --exploit --results_dir_prefix paper_
 ```
 
-`summarize_rl_results_av_seed_const.sh` is the constant-command grid. For every checkpoint it finds, it repeats the evaluation at normalized commands `0.0, 0.1, ..., 1.0`. `--const_control` uses that constant in place of the learned action. The value is a fraction of the speed limit for `SumoEnvCentralizedVel`, and the corresponding fraction of the headway range for a headway checkpoint. Point this script at the speed-limit runs when reproducing traditional variable speed limits:
+`summarize_rl_results_av_seed_const.sh` is the constant-command grid. For every checkpoint it finds, it repeats the evaluation at normalized commands `0.0, 0.1, ..., 1.0`. `--const_control` uses that constant in place of the learned action. The value is a fraction of the speed limit for `SumoEnvCentralizedSpeedLimit`, and the corresponding fraction of the headway range for a headway checkpoint. Point this script at the speed-limit runs when reproducing traditional variable speed limits:
 
 ```bash
 bash summarize_rl_results_av_seed_const.sh ./ray_results
@@ -192,7 +193,7 @@ That name is used in two places:
 | `scenarios/single_junction/<run_name>/` | Generated SUMO configs, routes, and network copies |
 | `results/<run_name>/` | Per-episode simulation outputs |
 
-For a medium-merge time-headway run, that is `results/SumoEnvCentralizedTau_merge_flow_percent_50_multi_lane_explore/`. Under it, each episode is a subdirectory named from the SUMO config stem, ACC penetration, control mode, and seed, for example:
+For a medium-merge time-headway run, that is `results/SumoEnvCentralizedTimeHeadway_merge_flow_percent_50_multi_lane_explore/` (or the same path with `SumoEnvCentralizedTau` if the checkpoint was trained with the legacy name). Under it, each episode is a subdirectory named from the SUMO config stem, ACC penetration, control mode, and seed, for example:
 
 ```text
 results/<run_name>/
@@ -211,9 +212,9 @@ Compare the three learned controllers at medium merge (the penetration sweep in 
 ```bash
 python simulation_analysis.py \
   --results_dir \
-    SumoEnvCentralizedTau_merge_flow_percent_50_multi_lane_explore \
-    SumoEnvCentralizedMinGap_merge_flow_percent_50_multi_lane_explore \
-    SumoEnvCentralizedVel_merge_flow_percent_50_multi_lane_explore
+    SumoEnvCentralizedTimeHeadway_merge_flow_percent_50_multi_lane_explore \
+    SumoEnvCentralizedDistanceHeadway_merge_flow_percent_50_multi_lane_explore \
+    SumoEnvCentralizedSpeedLimit_merge_flow_percent_50_multi_lane_explore
 ```
 
 The script saves **`performance.json`** and a plot under each `results/.../Multi-lane/` directory (and an overlaid comparison under `results/<dir1>_vs_<dir2>/...` when you pass multiple `--results_dir` values). Repeat with `merge_flow_percent_25` and `merge_flow_percent_100` for the light and heavy inflows.
@@ -245,7 +246,7 @@ The GUI opens zoomed out to the whole network, so zoom in to the second intersec
 
 ### Traditional variable speed limits
 
-Traditional VSL is a constant speed on the two controlled segments, applied while merging vehicles are on the on-ramp. The constant is chosen by a grid search in 10% steps of the speed limit. Prefer `summarize_rl_results_av_seed_const.sh` on a directory of `SumoEnvCentralizedVel` checkpoints (see Batch evaluation). For a manual sweep on one checkpoint:
+Traditional VSL is a constant speed on the two controlled segments, applied while merging vehicles are on the on-ramp. The constant is chosen by a grid search in 10% steps of the speed limit. Prefer `summarize_rl_results_av_seed_const.sh` on a directory of `SumoEnvCentralizedSpeedLimit` checkpoints (see Batch evaluation). For a manual sweep on one checkpoint:
 
 ```bash
 VEL_CKPT=./ray_results/<VEL_RUN_DIRECTORY>/checkpoint_best
@@ -261,14 +262,14 @@ for NORM in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9; do
 done
 ```
 
-`--const_control_val_norm` is the fraction of the segment speed limit. The value `0.9` is 90% of 31.29 m/s. All of the values for one checkpoint share one results directory, named like `SumoEnvCentralizedVel_const_control_merge_flow_percent_50_multi_lane_explore`.
+`--const_control_val_norm` is the fraction of the segment speed limit. The value `0.9` is 90% of 31.29 m/s. All of the values for one checkpoint share one results directory, named like `SumoEnvCentralizedSpeedLimit_const_control_merge_flow_percent_50_multi_lane_explore`.
 
 Point `--ref_results_dir` at the RL speed-limit directory from the previous section. That directory holds the human-driven baseline used in the comparison:
 
 ```bash
 python simulation_analysis.py \
-  --results_dir SumoEnvCentralizedVel_const_control_merge_flow_percent_50_multi_lane_explore \
-  --ref_results_dir SumoEnvCentralizedVel_merge_flow_percent_50_multi_lane_explore
+  --results_dir SumoEnvCentralizedSpeedLimit_const_control_merge_flow_percent_50_multi_lane_explore \
+  --ref_results_dir SumoEnvCentralizedSpeedLimit_merge_flow_percent_50_multi_lane_explore
 ```
 
-The summary keeps the constant level with the highest mean improvement at each penetration rate. Repeat the sweep for each inflow and penetration checkpoint used in the paper, then pass the const-control directory and the two headway directories together to overlay traditional VSL with the learned controllers. `--ref_results_dir` must be given once per `--results_dir` entry. Use the matching RL evaluation directory for each learned controller, and the matching `SumoEnvCentralizedVel` evaluation directory for the const-control entry.
+The summary keeps the constant level with the highest mean improvement at each penetration rate. Repeat the sweep for each inflow and penetration checkpoint used in the paper, then pass the const-control directory and the two headway directories together to overlay traditional VSL with the learned controllers. `--ref_results_dir` must be given once per `--results_dir` entry. Use the matching RL evaluation directory for each learned controller, and the matching `SumoEnvCentralizedSpeedLimit` evaluation directory for the const-control entry.

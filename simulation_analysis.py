@@ -8,6 +8,7 @@ from utils.analysis_utils import (
     plot_mixed_stat_results,
     FIG_SAVE_FORMATS,
 )
+from utils.centralized_env_registry import results_dir_plot_label
 from train_ppo_centralized import (
     INFLOW_TIME_HEADWAY,
     INFLOW_PERCENT,
@@ -415,7 +416,7 @@ def main():
                 mixed_stats=performance,
                 title=multi_sim_group_name,
                 std_scale_factor=1.96,
-                label=results_dir,
+                label=results_dir_plot_label(results_dir),
                 ax=ax_mixed_stat,
                 line_num=line_num,
             )

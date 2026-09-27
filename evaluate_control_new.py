@@ -18,17 +18,20 @@ from ray.rllib.env.env_context import EnvContext
 import traci.constants as tc
 
 from sumo_centralized_envs_new import (
-    SumoEnvCentralizedMinGap,
-    SumoEnvCentralizedTau,
-    SumoEnvCentralizedVel,
+    SumoEnvCentralizedDistanceHeadway,
+    SumoEnvCentralizedSpeedLimit,
+    SumoEnvCentralizedTimeHeadway,
 )
 
 from train_ppo_centralized import (
     ENV_CLS_STR_OPTIONS,
-    get_env_class_from_str,
     add_parser_simulation_params,
     DEF_SUMO_CONFIG_PARAMS,
     DEF_SIM_CONFIG_PARAMS,
+)
+from utils.centralized_env_registry import (
+    get_env_class_from_str,
+    is_time_headway_env_class,
 )
 
 # from train_ppo_centralized import create_parser
@@ -212,15 +215,15 @@ def add_sims_to_queue(sim_queue: queue.Queue, sim_configs: list):
 
 
 def get_const_control_params(env_obj):
-    if isinstance(env_obj, SumoEnvCentralizedVel):
+    if isinstance(env_obj, SumoEnvCentralizedSpeedLimit):
         default_val = env_obj._get_control_profile_max_speed()
         min_val = 0
         max_val = default_val
-    elif isinstance(env_obj, SumoEnvCentralizedMinGap):
+    elif isinstance(env_obj, SumoEnvCentralizedDistanceHeadway):
         default_val = env_obj.default_min_gap
         min_val = env_obj.min_min_gap
         max_val = env_obj.max_min_gap
-    elif isinstance(env_obj, SumoEnvCentralizedTau):
+    elif isinstance(env_obj, SumoEnvCentralizedTimeHeadway):
         default_val = env_obj.default_tau
         min_val = env_obj.min_tau
         max_val = env_obj.max_tau
@@ -521,10 +524,10 @@ def simulate(
         avg_acc_time_delay_per_sec=avg_acc_time_delay_per_sec,
     )
 
-    if sim_config_params["env_class"] == "SumoEnvCentralizedTau":
+    if is_time_headway_env_class(sim_config_params["env_class"]):
         sim_tau = const_control_val if use_const_control else env.default_tau
     else:
-        sim_tau = SumoEnvCentralizedTau.DEF_MIN_TAU
+        sim_tau = SumoEnvCentralizedTimeHeadway.DEF_MIN_TAU
 
     episode_results.update(tau=sim_tau)
     if use_const_control:

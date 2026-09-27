@@ -822,7 +822,7 @@ class SumoEnvCentralizedBase(SumoEnv):
         }
 
 
-class SumoEnvCentralizedVel(SumoEnvCentralizedBase):
+class SumoEnvCentralizedSpeedLimit(SumoEnvCentralizedBase):
     # @override  # Only from python 3.12
     def _init_actions(self):
         super()._init_actions()
@@ -891,7 +891,7 @@ class SumoEnvCentralizedVel(SumoEnvCentralizedBase):
             )
 
 
-class SumoEnvCentralizedTau(SumoEnvCentralizedBase):
+class SumoEnvCentralizedTimeHeadway(SumoEnvCentralizedBase):
     DEF_MIN_TAU = 1.5
     DEF_MAX_TAU = 6  # 10
 
@@ -976,7 +976,7 @@ class SumoEnvCentralizedTau(SumoEnvCentralizedBase):
             )
 
 
-class SumoEnvCentralizedMinGap(SumoEnvCentralizedBase):
+class SumoEnvCentralizedDistanceHeadway(SumoEnvCentralizedBase):
     DEF_MIN_MIN_GAP = 2.5  # For safety: SUMO default value (m)
     DEF_MAX_MIN_GAP = 30  # m
 
@@ -1065,3 +1065,16 @@ class SumoEnvCentralizedMinGap(SumoEnvCentralizedBase):
             self.required_segment_min_gap_actions.to_csv(
                 Path(self.episode_results_dir) / "segment_min_gap.csv"
             )
+
+
+# Backward-compatible aliases (Tau / MinGap / Vel).
+class SumoEnvCentralizedVel(SumoEnvCentralizedSpeedLimit):
+    pass
+
+
+class SumoEnvCentralizedTau(SumoEnvCentralizedTimeHeadway):
+    pass
+
+
+class SumoEnvCentralizedMinGap(SumoEnvCentralizedDistanceHeadway):
+    pass
