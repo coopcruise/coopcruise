@@ -106,7 +106,7 @@ Training runs 10,000 PPO iterations. It writes `checkpoint_best` (highest mean e
 
 ### One scenario
 
-The following is an example of launching training run for Time-headway control, medium merge, 100% connected ACC:
+The following is an example of launching a training run for time-headway control, medium merge, 100% connected ACC:
 
 ```bash
 python train_ppo_centralized.py \
@@ -123,35 +123,7 @@ python train_ppo_centralized.py \
   --results_dir ./ray_results
 ```
 
-The following example evaluates that checkpoint on the paper's 30 seeds. The same call also simulates the human-driven baseline (the policy is turned off) and a no-merge reference. `--auto_results_dir` names the output from the checkpoint configuration. Add `--exploit` to evaluate the mean action. The batch scripts in the next section do this for every saved checkpoint.
-
-```bash
-python evaluate_control_rl.py \
-  ./ray_results/<RUN_DIRECTORY>/checkpoint_best \
-  --num_tests 30 \
-  --num_workers 10 \
-  --random_seed 0 \
-  --auto_results_dir
-```
-
-`<RUN_DIRECTORY>` is the `PPO_SumoEnvCentralizedTau_...` folder created under `./ray_results`. To watch a single run in the SUMO GUI:
-
-```bash
-python evaluate_control_rl.py \
-  ./ray_results/<RUN_DIRECTORY>/checkpoint_best \
-  --debug
-```
-
-For the above example, `--auto_results_dir` writes to `results/SumoEnvCentralizedTau_merge_flow_percent_50_multi_lane_explore/`. To aggregate the boundary-aware speed improvement against the human-driven runs in that directory, run:
-
-```bash
-python simulation_analysis.py \
-  --results_dir SumoEnvCentralizedTau_merge_flow_percent_50_multi_lane_explore
-```
-
-The script prints and saves mean relative speed change by ACC penetration, with a 95% confidence interval, under `results/SumoEnvCentralizedTau_merge_flow_percent_50_multi_lane_explore/Multi-lane/`.
-
-Repeat the train and evaluate commands with `--env_class SumoEnvCentralizedMinGap` for distance headway, or `--env_class SumoEnvCentralizedVel` for the RL speed-limit baseline. Those evaluations land in their own `results/` directories.
+`<RUN_DIRECTORY>` below is the `PPO_SumoEnvCentralizedTau_...` folder created under `./ray_results`. Evaluate with the batch scripts in the next sections (paper path), or with a single-checkpoint call later in this README. Repeat training with `--env_class SumoEnvCentralizedMinGap` for distance headway, or `--env_class SumoEnvCentralizedVel` for the RL speed-limit baseline.
 
 ### Full paper grid
 
@@ -182,11 +154,11 @@ done
 
 ### Batch evaluation
 
-Two shell scripts walk a training directory, find every `checkpoint_best`, and call `evaluate_control_rl.py`. Scenario settings such as warm-up, inflow, and penetration are read from the checkpoint, so the paper flags do not need to be repeated. Run them from the repository root.
+This is the evaluation path used for the paper results. Two shell scripts walk a training directory, find every `checkpoint_best`, and call `evaluate_control_rl.py`. Scenario settings such as warm-up, inflow, and penetration are read from the checkpoint, so the paper flags do not need to be repeated. Run them from the repository root.
 
 Each script evaluates one checkpoint at a time inside a single process (`--num_workers 0`) and keeps up to 10 of those evaluations running at once. Each evaluation uses 30 seeds and `--random_seed 0`. A checkpoint is skipped when its run-directory name does not contain `av_<percent>`, which the trainer includes for the runs above. Ctrl-C stops the script and the evaluations it launched.
 
-`summarize_rl_results_av_seed.sh` evaluates the learned policy. As in the single-checkpoint command, each call also records the human-driven baseline and a no-merge reference.
+`summarize_rl_results_av_seed.sh` evaluates the learned policy. Each call also records the human-driven baseline (policy off) and a no-merge reference. `--auto_results_dir` names the output from the checkpoint configuration. Add `--exploit` to evaluate the mean action.
 
 ```bash
 bash summarize_rl_results_av_seed.sh ./ray_results
@@ -209,6 +181,29 @@ bash summarize_rl_results_av_seed.sh ./ray_results --exploit --results_dir_prefi
 bash summarize_rl_results_av_seed_const.sh ./ray_results
 ```
 
+#### Evaluation results location and structure
+
+`evaluate_control_rl.py` writes relative to the repository root (the working directory). With `--auto_results_dir`, the run name is built from the checkpoint (env class, merge/inflow, lane type, explore/exploit, optional const-control and prefix). Without it, `--results_dir` is used (default `test`).
+
+That name is used in two places:
+
+| Path | Contents |
+| --- | --- |
+| `scenarios/single_junction/<run_name>/` | Generated SUMO configs, routes, and network copies |
+| `results/<run_name>/` | Per-episode simulation outputs |
+
+For a medium-merge time-headway run, that is `results/SumoEnvCentralizedTau_merge_flow_percent_50_multi_lane_explore/`. Under it, each episode is a subdirectory named from the SUMO config stem, ACC penetration, control mode, and seed, for example:
+
+```text
+results/<run_name>/
+  ..._random_switch_av_percent_100_rl_control_av_switch_seed_0/   # learned policy
+  ..._random_switch_av_percent_100_no_control_av_switch_seed_0/  # human-driven baseline
+  ..._no_merge_..._no_control_av_switch_seed_0/                  # no-merge reference
+  ...  (repeated for each of the --num_tests seeds)
+```
+
+Each leaf folder holds `episode_result.json`, `metadata.json`, `veh_travel_info.csv`, segment/detector CSVs, and plots from the run. Different ACC penetrations for the same controller and merge inflow share one `results/<run_name>/` tree; only the leaf names change.
+
 Run `simulation_analysis.py` afterwards; the shell scripts stop once the simulations finish. Penetration rates for the same controller and the same merge inflow share one results directory. The directory name encodes the environment class and the merge inflow, and the ACC penetration is recorded inside it. Evaluate all three penetration rates before analysis so the ACC-penetration axis is populated. If you passed `--exploit`, replace `_explore` with `_exploit` in the directory names below.
 
 Compare the three learned controllers at medium merge (the penetration sweep in the paper):
@@ -221,11 +216,32 @@ python simulation_analysis.py \
     SumoEnvCentralizedVel_merge_flow_percent_50_multi_lane_explore
 ```
 
-Repeat with `merge_flow_percent_25` and `merge_flow_percent_100` for the light and heavy inflows. Each call writes an overlaid figure next to a `results/` directory named from the directories you passed.
+The script prints and saves mean relative speed change by ACC penetration, with a 95% confidence interval, under each `results/.../Multi-lane/` directory (and an overlaid comparison next to a combined `results/` name). Repeat with `merge_flow_percent_25` and `merge_flow_percent_100` for the light and heavy inflows.
+
+### Single-checkpoint evaluation
+
+To evaluate one checkpoint without the batch scripts (same outputs and directory layout as above):
+
+```bash
+python evaluate_control_rl.py \
+  ./ray_results/<RUN_DIRECTORY>/checkpoint_best \
+  --num_tests 30 \
+  --num_workers 0 \
+  --random_seed 0 \
+  --auto_results_dir
+```
+
+To watch a single run in the SUMO GUI:
+
+```bash
+python evaluate_control_rl.py \
+  ./ray_results/<RUN_DIRECTORY>/checkpoint_best \
+  --debug
+```
 
 ### Traditional variable speed limits
 
-Traditional VSL is a constant speed on the two controlled segments, applied while merging vehicles are on the on-ramp. The constant is chosen by a grid search in 10% steps of the speed limit. Run that sweep on a `SumoEnvCentralizedVel` checkpoint trained at the same inflow and penetration. The checkpoint supplies the scenario, and `--const_control` replaces the learned action with the constant speed:
+Traditional VSL is a constant speed on the two controlled segments, applied while merging vehicles are on the on-ramp. The constant is chosen by a grid search in 10% steps of the speed limit. Prefer `summarize_rl_results_av_seed_const.sh` on a directory of `SumoEnvCentralizedVel` checkpoints (see Batch evaluation). For a manual sweep on one checkpoint:
 
 ```bash
 VEL_CKPT=./ray_results/<VEL_RUN_DIRECTORY>/checkpoint_best
@@ -235,15 +251,13 @@ for NORM in 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9; do
     --const_control \
     --const_control_val_norm "$NORM" \
     --num_tests 30 \
-    --num_workers 10 \
+    --num_workers 0 \
     --random_seed 0 \
     --auto_results_dir
 done
 ```
 
 `--const_control_val_norm` is the fraction of the segment speed limit. The value `0.9` is 90% of 31.29 m/s. All of the values for one checkpoint share one results directory, named like `SumoEnvCentralizedVel_const_control_merge_flow_percent_50_multi_lane_explore`.
-
-`summarize_rl_results_av_seed_const.sh` runs this grid for every `checkpoint_best` under the directory you give it, at `0.0` through `1.0` in steps of `0.1`. Give it a directory that contains only `SumoEnvCentralizedVel` checkpoints so the sweep stays on speed limits.
 
 Point `--ref_results_dir` at the RL speed-limit directory from the previous section. That directory holds the human-driven baseline used in the comparison:
 
